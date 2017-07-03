@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use std::fmt::{Formatter, Display, self};
+use std::fmt::{Formatter, Debug, Display, self};
 
 pub type RcStr = Rc<String>;
 pub type PosIndex = isize;
@@ -8,7 +8,7 @@ pub type PosIndex = isize;
  * Positions
  */
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone)]
 pub struct Pos {
     pub src_index: isize,
     pub line_index: isize,
@@ -54,6 +54,13 @@ impl Pos {
 impl Display for Pos {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}:{}", self.line_index + 1, self.col_index + 1)
+    }
+}
+
+impl Debug for Pos {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Pos {{ src_index: {:?} line_index: {:?} col_index: {:?} }}",
+               self.src_index, self.line_index, self.col_index)
     }
 }
 

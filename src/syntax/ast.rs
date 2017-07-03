@@ -2,10 +2,28 @@ use common::*;
 use errors::*;
 use syntax::token::*;
 use std::rc::Rc;
+use std::fmt::{Formatter, Debug, self};
 
 pub type Tokens = Vec<Rc<Token>>;
 
 pub struct AST;
+
+pub trait ASTNode {
+    fn tokens(&self) -> &[Rc<Token>];
+    fn range(&self) -> Range {
+        let tokens = self.tokens();
+        //assert!(!tokens.is_empty());
+        let start = tokens.first()
+            .unwrap()
+            .range()
+            .start;
+        let end = tokens.last()
+            .unwrap()
+            .range()
+            .end;
+        Range { start, end }
+    }
+}
 
 /// A trait for the AST that defines the lookaheads of each node.
 pub trait Lookaheads {
@@ -49,10 +67,6 @@ impl Item {
         Item { tokens, item_type, }
     }
 
-    pub fn tokens(&self) -> &Tokens {
-        &self.tokens
-    }
-
     pub fn item_type(&self) -> &ItemType {
         &self.item_type
     }
@@ -80,6 +94,13 @@ impl Lookaheads for Item {
     }
 }
 
+impl ASTNode for Item {
+    fn tokens(&self) -> &[Rc<Token>] {
+        self.tokens
+            .as_slice()
+    }
+}
+
 impl From<Token> for Item {
     fn from(other: Token) -> Item {
         let other_str = other.as_str()
@@ -103,3 +124,4 @@ impl From<Token> for Item {
         }
     }
 }
+

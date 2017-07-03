@@ -144,7 +144,7 @@ impl<'c> Parser<'c> {
                 let mut items = vec![];
                 while !self.can_match_token(TokenType::RBrack) {
                     let item = self.next_item()?;
-                    tokens.append(&mut item.tokens().clone());
+                    tokens.extend_from_slice(item.tokens());
                     items.push(item);
                 }
                 tokens.push(self.match_token(TokenType::RBrack)?.into_rc());
@@ -179,16 +179,45 @@ mod test {
         }
     }
 
+    macro_rules! item {
+        (Nil) => { Item::new(vec![], ItemType::Nil) };
+        (Ident, $value:expr) => { Item::new(vec![], ItemType::Ident($value.to_string())) };
+        (String, $value:expr) => { Item::new(vec![], ItemType::String($value.to_string())) };
+        ($type:ident, $value:expr) => { Item::new(vec![], ItemType::$type($value)) };
+    }
+
     #[test]
     fn test_parser_items() {
         tests! {
             r#"
             123456789
             987654321
+
+            foo bar baz
+            'a '\n '\s
+            "This is\na string with \"escapes\""
+            "this is a boring string without escapes"
+            T F
+            [ this is a stack ]
+            @
             "#,
 
-            (next_item, Item::new(vec![], ItemType::Int(123456789)))
-            (next_item, Item::new(vec![], ItemType::Int(987654321)))
+            (next_item, item!(Int, 123456789))
+            (next_item, item!(Int, 987654321))
+            (next_item, item!(Ident, "foo"))
+            (next_item, item!(Ident, "bar"))
+            (next_item, item!(Ident, "baz"))
+            (next_item, item!(Char, 'a'))
+            (next_item, item!(Char, '\n'))
+            (next_item, item!(Char, ' '))
+            (next_item, item!(String, "This is\na string with \"escapes\""))
+            (next_item, item!(String, "this is a boring string without escapes"))
+            (next_item, item!(Bool, true))
+            (next_item, item!(Bool, false))
+            (next_item, item!(Stack, vec![
+                              item!(Ident, "this"), item!(Ident, "is"),
+                              item!(Ident, "a"), item!(Ident, "stack")]))
+            (next_item, item!(Nil))
         };
     }
 }

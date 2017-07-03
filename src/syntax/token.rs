@@ -112,6 +112,10 @@ impl Token {
         Token { token_type, range }
     }
 
+    pub fn range(&self) -> Range {
+        self.range.clone()
+    }
+
     pub fn as_str(&self) -> &str {
         let ref range = self.range;
         let ref text = *range.start.source_text;
