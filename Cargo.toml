@@ -1,0 +1,9 @@
+[package]
+name = "sbl-rs"
+version = "0.1.0"
+authors = ["Alek Ratzloff"]
+
+[dependencies]
+error-chain = "0.10.0"
+lazy_static = "0.2"
+maplit = "0.1.4"
