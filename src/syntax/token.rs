@@ -94,6 +94,14 @@ impl Token {
     pub fn token_type(&self) -> TokenType {
         self.token_type
     }
+
+    pub fn to_rc(&self) -> Rc<Token> {
+        Rc::new(self.clone())
+    }
+
+    pub fn into_rc(self) -> Rc<Token> {
+        Rc::new(self)
+    }
 }
 
 impl PartialEq for Token {
@@ -326,9 +334,27 @@ impl<'c> Tokenizer<'c> {
     }
 
     fn next_identifier(&mut self) -> Result<Token> {
+        lazy_static! {
+            static ref KEYWORDS: HashMap<&'static str, TokenType> = {
+                hashmap! {
+                    "br" => TokenType::KwBr,
+                    "el" => TokenType::KwEl,
+                    "loop" => TokenType::KwLoop,
+                    "@" => TokenType::KwNil,
+                    "import" => TokenType::KwImport,
+                    "T" => TokenType::KwT,
+                    "F" => TokenType::KwF,
+                }
+            };
+        };
         self.match_any_char(IDENT_CHARS);
         while self.try_match_any(IDENT_CHARS).is_some() { }
-        self.ok_token(TokenType::Ident)
+        if let Some(ty) = KEYWORDS.get(self.curr_range.as_str()) {
+            self.ok_token(*ty)
+        }
+        else {
+            self.ok_token(TokenType::Ident)
+        }
     }
 
     fn match_single_token(&mut self, c: char, token_type: TokenType) -> Result<Token> {

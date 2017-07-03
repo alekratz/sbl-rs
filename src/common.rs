@@ -92,6 +92,14 @@ impl Range {
     pub fn catchup(&mut self) {
         self.start = self.end.clone();
     }
+
+    pub fn as_str(&self) -> &str {
+        let start = self.start.src_index;
+        let end = self.end.src_index;
+        assert!(start >= 0);
+        assert!(start <= end);
+        &self.start.source_text.as_str()[start as usize..end as usize]
+    }
 }
 
 impl Display for Range {
