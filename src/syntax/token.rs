@@ -4,6 +4,7 @@ use std::str::Chars;
 use std::rc::Rc;
 use std::marker::PhantomData;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter, self};
 
 lazy_static! {
     static ref ESCAPES: HashMap<char, char> = {
@@ -67,6 +68,39 @@ pub enum TokenType {
     KwLoop,
 }
 
+impl Display for TokenType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        use self::TokenType::*;
+        let s = match *self {
+            Comment => "comment",
+            Int => "int",
+            Float => "float",
+            String => "string",
+            Char => "char",
+            Ident => "ident",
+
+            // Symbols
+            Dot => "dot",
+            Nil => "nil",
+            Semi => "semi",
+            LBrace => "lbrace",
+            RBrace => "rbrace",
+            LBrack => "lbrack",
+            RBrack => "rbrack",
+
+            // Keywords
+            KwNil => "nil sigil",
+            KwImport => "import keyword",
+            KwBr => "br keyword",
+            KwEl => "el keyword",
+            KwT => "T keyword",
+            KwF => "F keyword",
+            KwLoop => "loop keyword",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Token {
     token_type: TokenType,
@@ -87,6 +121,9 @@ impl Token {
             start += 1;
             end -= 1;
         }
+        else if self.token_type == TokenType::Char {
+            start += 1;
+        }
         assert!(start <= end);
         &text[start..end]
     }
@@ -101,6 +138,35 @@ impl Token {
 
     pub fn into_rc(self) -> Rc<Token> {
         Rc::new(self)
+    }
+
+    /// Unescapes the string returned from `self.as_str()`.
+    pub fn unescape(&self) -> String {
+        let s = self.as_str();
+        if !s.contains('\\') {
+            return s.to_string();
+        }
+
+        let mut built = String::with_capacity(s.len());
+        let mut chars = s.chars();
+        loop {
+            if let Some(c) = chars.next() {
+                if c == '\\' {
+                    let c = chars.next()
+                        .expect("TOKENIZER BUG: got escape start character, but no character following it");
+                    let c = ESCAPES.get(&c)
+                        .expect("TOKENIZER BUG: got invalid escape character that was not caught by the tokenizer");
+                    built.push(*c);
+                }
+                else {
+                    built.push(c);
+                }
+            }
+            else {
+                break;
+            }
+        }
+        built
     }
 }
 
@@ -407,7 +473,8 @@ impl<'c> Iterator for Tokenizer<'c> {
     }
 }
 
-mod tests {
+#[cfg(test)]
+mod test {
     use syntax::token::*;
 
     macro_rules! tests {
@@ -523,16 +590,16 @@ mod tests {
             '\"
             "#,
 
-            (TokenType::Char, "'a")
-            (TokenType::Char, "'b")
-            (TokenType::Char, "'c")
-            (TokenType::Char, "'d")
-            (TokenType::Char, "'\\s")
-            (TokenType::Char, "'\\n")
-            (TokenType::Char, "'\\t")
-            (TokenType::Char, "'\\\\")
-            (TokenType::Char, "'\\'")
-            (TokenType::Char, "'\\\"")
+            (TokenType::Char, "a")
+            (TokenType::Char, "b")
+            (TokenType::Char, "c")
+            (TokenType::Char, "d")
+            (TokenType::Char, "\\s")
+            (TokenType::Char, "\\n")
+            (TokenType::Char, "\\t")
+            (TokenType::Char, "\\\\")
+            (TokenType::Char, "\\'")
+            (TokenType::Char, "\\\"")
         };
     }
 
