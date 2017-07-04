@@ -69,6 +69,7 @@ pub enum ItemType {
 /// An item may be an int, identifier, character, string, boolean, stack
 /// literal, or nil.
 #[derive(Clone, Debug)]
+#[cfg_attr(not(test), derive(PartialEq))]
 pub struct Item {
     tokens: Tokens,
     item_type: ItemType,
@@ -81,13 +82,6 @@ impl Item {
 
     pub fn item_type(&self) -> &ItemType {
         &self.item_type
-    }
-}
-
-#[cfg(not(test))]
-impl PartialEq for Item {
-    fn eq(&self, other: &Item) -> bool {
-        self.item_type == other.item_type && self.tokens == other.tokens
     }
 }
 
@@ -139,6 +133,8 @@ impl From<Token> for Item {
 // Stack actions
 //
 
+#[derive(Clone, Debug)]
+#[cfg_attr(not(test), derive(PartialEq))]
 pub enum StackAction {
     Push(Item),
     Pop(Tokens, Item),
@@ -150,6 +146,18 @@ impl StackAction {
             &StackAction::Push(ref i) => i,
             &StackAction::Pop(_, ref i) => i,
         }
+    }
+
+    pub fn is_push(&self) -> bool {
+        use self::StackAction::*;
+        match *self {
+            Push(_) => true,
+            Pop(_, _) => false,
+        }
+    }
+
+    pub fn is_pop(&self) -> bool {
+        ! self.is_push()
     }
 }
 
@@ -166,10 +174,23 @@ impl ASTNode for StackAction {
     }
 }
 
+#[cfg(test)]
+impl PartialEq for StackAction {
+    fn eq(&self, other: &Self) -> bool {
+        use self::StackAction::*;
+        (self.item() == other.item()) && match *self {
+            Push(_) => other.is_push(),
+            Pop(_, _) => other.is_pop(),
+        } 
+    }
+}
+
 //
 // Stack statements
 //
 
+#[derive(Clone, Debug)]
+#[cfg_attr(not(test), derive(PartialEq))]
 pub struct StackStmt {
     tokens: Tokens,
     stack_actions: Vec<StackAction>,
@@ -195,6 +216,13 @@ impl ASTNode for StackStmt {
 
     fn tokens(&self) -> &[Rc<Token>] {
         &self.tokens
+    }
+}
+
+#[cfg(test)]
+impl PartialEq for StackStmt {
+    fn eq(&self, other: &Self) -> bool {
+        self.stack_actions == other.stack_actions
     }
 }
 
