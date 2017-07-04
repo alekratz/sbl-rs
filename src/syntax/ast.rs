@@ -9,6 +9,7 @@ pub type Tokens = Vec<Rc<Token>>;
 pub struct AST;
 
 pub trait ASTNode {
+    fn lookaheads() -> &'static [TokenType];
     fn tokens(&self) -> &[Rc<Token>];
     fn range(&self) -> Range {
         let tokens = self.tokens();
@@ -25,19 +26,30 @@ pub trait ASTNode {
     }
 }
 
-/// A trait for the AST that defines the lookaheads of each node.
-pub trait Lookaheads {
-    fn lookaheads() -> &'static [TokenType];
-}
-
 macro_rules! lookaheads {
-    ($($tt:expr),+) => {{
+    (@ TokenType::$head:ident $($tail:tt)*) => {{
+        let mut tail = lookaheads!(@ $($tail)*);
+        tail.push(TokenType::$head);
+        tail
+    }};
+    (@ $head:ident $($tail:tt)*) => {{
+        let mut tail = lookaheads!(@ $($tail)*);
+        tail.extend_from_slice($head::lookaheads().clone());
+        tail
+    }};
+    (@) => { vec![] };
+
+    ($($tt:tt)+) => {{
         lazy_static! {
-            static ref TOKENS: Vec<TokenType> = vec![$($tt),+];
+            static ref TOKENS: Vec<TokenType> = lookaheads!(@ $($tt)+);
         };
         &TOKENS
     }};
 }
+
+//
+// Items
+//
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum ItemType {
@@ -86,18 +98,16 @@ impl PartialEq for Item {
     }
 }
 
-impl Lookaheads for Item {
-    fn lookaheads() -> &'static [TokenType] {
-        lookaheads!(TokenType::Int, TokenType::Ident, TokenType::Char,
-                    TokenType::String, TokenType::KwT, TokenType::KwF,
-                    TokenType::KwNil, TokenType::LBrack)
-    }
-}
-
 impl ASTNode for Item {
     fn tokens(&self) -> &[Rc<Token>] {
         self.tokens
             .as_slice()
+    }
+
+    fn lookaheads() -> &'static [TokenType] {
+        lookaheads!(TokenType::Int TokenType::Ident TokenType::Char
+                    TokenType::String TokenType::KwT TokenType::KwF
+                    TokenType::KwNil TokenType::LBrack)
     }
 }
 
@@ -122,6 +132,69 @@ impl From<Token> for Item {
             TokenType::KwNil => Item::new(vec![other.into_rc()], ItemType::Nil),
             _ => panic!("Token of type `{:?}` is incompatible to turn into an Item", other.token_type()),
         }
+    }
+}
+
+//
+// Stack actions
+//
+
+pub enum StackAction {
+    Push(Item),
+    Pop(Tokens, Item),
+}
+
+impl StackAction {
+    pub fn item(&self) -> &Item {
+        match self {
+            &StackAction::Push(ref i) => i,
+            &StackAction::Pop(_, ref i) => i,
+        }
+    }
+}
+
+impl ASTNode for StackAction {
+    fn lookaheads() -> &'static [TokenType] {
+        lookaheads!(Item TokenType::Dot)
+    }
+
+    fn tokens(&self) -> &[Rc<Token>] {
+        match self {
+            &StackAction::Push(ref i) => i.tokens(),
+            &StackAction::Pop(ref t, _) => t,
+        }
+    }
+}
+
+//
+// Stack statements
+//
+
+pub struct StackStmt {
+    tokens: Tokens,
+    stack_actions: Vec<StackAction>,
+}
+
+impl StackStmt  {
+    pub fn new(tokens: Tokens, stack_actions: Vec<StackAction>) -> Self {
+        StackStmt {
+            tokens,
+            stack_actions,
+        }
+    }
+
+    pub fn stack_actions(&self) -> &[StackAction] {
+        &self.stack_actions
+    }
+}
+
+impl ASTNode for StackStmt {
+    fn lookaheads() -> &'static [TokenType] {
+        lookaheads!(StackStmt TokenType::Semi)
+    }
+
+    fn tokens(&self) -> &[Rc<Token>] {
+        &self.tokens
     }
 }
 
