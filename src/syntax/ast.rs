@@ -6,6 +6,17 @@ use std::fmt::{Formatter, Debug, self};
 
 pub type Tokens = Vec<Rc<Token>>;
 
+/// A trait which appends a node's tokens to a Vec.
+pub trait AppendNode {
+    fn append_node<T: ASTNode>(&mut self, node: &T);
+}
+
+impl AppendNode for Tokens {
+    fn append_node<T: ASTNode>(&mut self, node: &T) {
+        self.extend_from_slice(node.tokens());
+    }
+}
+
 pub struct AST;
 
 pub trait ASTNode {
@@ -68,8 +79,8 @@ pub enum ItemType {
 ///
 /// An item may be an int, identifier, character, string, boolean, stack
 /// literal, or nil.
-#[derive(Clone, Debug)]
-#[cfg_attr(not(test), derive(PartialEq))]
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Item {
     tokens: Tokens,
     item_type: ItemType,
@@ -89,6 +100,13 @@ impl Item {
 impl PartialEq for Item {
     fn eq(&self, other: &Item) -> bool {
         self.item_type == other.item_type
+    }
+}
+
+#[cfg(test)]
+impl Debug for Item {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Item {{ {:?} }}", self.item_type)
     }
 }
 
@@ -133,8 +151,8 @@ impl From<Token> for Item {
 // Stack actions
 //
 
-#[derive(Clone, Debug)]
-#[cfg_attr(not(test), derive(PartialEq))]
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub enum StackAction {
     Push(Item),
     Pop(Tokens, Item),
@@ -185,12 +203,85 @@ impl PartialEq for StackAction {
     }
 }
 
+#[cfg(test)]
+impl Debug for StackAction {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            &StackAction::Push(_) => write!(f, "Push {{ {:?} }}", self.item()),
+            &StackAction::Pop(_, _) => write!(f, "Pop {{ {:?} }}", self.item())
+        }
+    }
+}
+
 //
-// Stack statements
+// Statements
 //
 
 #[derive(Clone, Debug)]
 #[cfg_attr(not(test), derive(PartialEq))]
+pub enum Stmt {
+    Stack(StackStmt),
+    Br(BrStmt),
+    Loop(LoopStmt),
+}
+
+impl ASTNode for Stmt {
+    fn tokens(&self) -> &[Rc<Token>] {
+        match *self {
+            Stmt::Stack(ref s) => s.tokens(),
+            Stmt::Br(ref s) => s.tokens(),
+            Stmt::Loop(ref s) => s.tokens(),
+        }
+    }
+
+    fn lookaheads() -> &'static [TokenType] {
+        lookaheads!(StackStmt BrStmt ElStmt LoopStmt)
+    }
+}
+
+#[cfg(test)]
+impl PartialEq for Stmt {
+    fn eq(&self, other: &Self) -> bool {
+        use self::Stmt::*;
+        match self {
+            &Stack(ref s) => if let &Stack(ref o) = other { s == o } else { false },
+            &Br(ref s) => if let &Br(ref o) = other { s == o } else { false },
+            &Loop(ref s) => if let &Loop(ref o) = other { s == o } else { false },
+        }
+    }
+}
+
+macro_rules! from_stmt {
+    ($rule:ident, $name:ident) => {
+        impl From<Stmt> for $name {
+            fn from(stmt: Stmt) -> Self {
+                match stmt {
+                    Stmt::$rule(s) => s,
+                    _ => panic!(format!(concat!("called ", stringify!($name), "::from() for mismatched Stmt ({:?})"), stmt)),
+                }
+            }
+        }
+
+        /*
+        impl From<$name> for Stmt {
+            fn from(other: $name) -> Self {
+                Stmt::$rule(other)
+            }
+        }
+        */
+    };
+}
+
+from_stmt!(Stack, StackStmt);
+from_stmt!(Br, BrStmt);
+from_stmt!(Loop, LoopStmt);
+
+//
+// Stack statements
+//
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct StackStmt {
     tokens: Tokens,
     stack_actions: Vec<StackAction>,
@@ -211,7 +302,7 @@ impl StackStmt  {
 
 impl ASTNode for StackStmt {
     fn lookaheads() -> &'static [TokenType] {
-        lookaheads!(StackStmt TokenType::Semi)
+        lookaheads!(StackAction TokenType::Semi)
     }
 
     fn tokens(&self) -> &[Rc<Token>] {
@@ -226,3 +317,119 @@ impl PartialEq for StackStmt {
     }
 }
 
+#[cfg(test)]
+impl Debug for StackStmt {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "StackStmt {{ {:?} }}", self.stack_actions)
+    }
+}
+
+//
+// Block statements
+//
+
+macro_rules! block_stmt { 
+    (@ $name:ident new => ($($param:ident : $type:ty ),*) $($tail:tt)* ) => {
+        impl $name {
+            pub fn new(tokens: Tokens $( , $param: $type )*) -> Self {
+                $name {
+                    tokens,
+                    $( $param , )*
+                }
+            }
+        }
+
+        #[cfg(test)]
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                true $( && self.$param == other.$param )*
+            }
+        }
+
+        #[cfg(test)]
+        impl Debug for $name {
+            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+                $(
+                    write!(f, "{} {{ {:?} }}", stringify!($param), self.$param)
+                        .unwrap();
+                )*
+                Ok(())
+            }
+        }
+
+        block_stmt!(@ $name $($tail)*);
+    };
+    (@ $name:ident lookaheads => ($($lookaheads:tt)+) $($tail:tt)*) => {
+        impl ASTNode for $name {
+            fn tokens(&self) -> &[Rc<Token>] {
+                &self.tokens
+            }
+            
+            fn lookaheads() -> &'static [TokenType] {
+                lookaheads!($($lookaheads)+)
+            }
+        }
+
+        block_stmt!(@ $name $($tail)*);
+    };
+    (@ $name:ident) => {}; 
+
+    ($name:ident $($tail:tt)+) => {
+        block_stmt!(@ $name $($tail)+);
+    };
+}
+
+macro_rules! block_lookaheads {
+    ($name:ident $($lookaheads:tt)+) => {
+        impl ASTNode for $name {
+            fn lookaheads() -> &'static [TokenType] {
+                lookaheads!($($lookaheads)+)
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
+pub struct Block {
+    tokens: Tokens,
+    block: Vec<Stmt>,
+}
+
+block_stmt!(Block
+            new => (block: Vec<Stmt>)
+            lookaheads => (TokenType::LBrace));
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
+pub struct BrStmt {
+    tokens: Tokens,
+    block: Block,
+    el_stmt: Option<ElStmt>,
+}
+
+block_stmt!(BrStmt
+            new => (block: Block, el_stmt: Option<ElStmt>)
+            lookaheads => (TokenType::KwBr));
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
+pub struct ElStmt {
+    tokens: Tokens,
+    block: Block,
+}
+
+block_stmt!(ElStmt
+            new => (block: Block)
+            lookaheads => (TokenType::KwEl));
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
+pub struct LoopStmt {
+    tokens: Tokens,
+    block: Block,
+}
+
+block_stmt!(LoopStmt
+            new => (block: Block)
+            lookaheads => (TokenType::KwLoop));

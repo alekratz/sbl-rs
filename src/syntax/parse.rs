@@ -98,10 +98,13 @@ impl<'c> Parser<'c> {
     }
 
     fn can_match_any(&self, token_types: &[TokenType]) -> bool {
-        self.curr
+        let result = self.curr
             .as_ref()
-            .map(|t| token_types.contains(&t.token_type()))
-            .unwrap_or(false)
+            .map(|t| {
+                token_types.contains(&t.token_type())
+            })
+            .unwrap_or(false);
+        result
     }
 
     fn expect_curr(&self) -> Result<&Token> {
@@ -134,12 +137,70 @@ impl<'c> Parser<'c> {
     /*
      * Grammar rules
      */
+    fn expect_stmt(&mut self) -> Result<Stmt> {
+        if self.can_match_any(BrStmt::lookaheads()) {
+            Ok(Stmt::Br(self.expect_br_stmt()?))
+        }
+        else if self.can_match_any(LoopStmt::lookaheads()) {
+            Ok(Stmt::Loop(self.expect_loop_stmt()?))
+        }
+        else if self.can_match_any(StackStmt::lookaheads()) {
+            Ok(Stmt::Stack(self.expect_stack_stmt()?))
+        }
+        else {
+            self.match_any(Stmt::lookaheads())?;
+            unreachable!()
+        }
+    }
+
+    fn expect_block(&mut self) -> Result<Block> {
+        let mut tokens = vec![self.match_any(Block::lookaheads())?.into_rc()];
+        let mut block = vec![];
+        while !self.can_match_token(TokenType::RBrace) && self.curr.is_some() {
+            let stmt = self.expect_stmt()?;
+            tokens.append_node(&stmt);
+            block.push(stmt);
+        }
+        tokens.push(
+            self.match_token(TokenType::RBrace)?.into_rc());
+        Ok(Block::new(tokens, block))
+    }
+
+    fn expect_loop_stmt(&mut self) -> Result<LoopStmt> {
+        let mut tokens = vec![self.match_any(LoopStmt::lookaheads())?.into_rc()];
+        let block = self.expect_block()?;
+        tokens.append_node(&block);
+        Ok(LoopStmt::new(tokens, block))
+    }
+
+    fn expect_br_stmt(&mut self) -> Result<BrStmt> {
+        let mut tokens = vec![self.match_any(BrStmt::lookaheads())?.into_rc()];
+        let block = self.expect_block()?;
+        tokens.append_node(&block);
+        let el_stmt = if self.can_match_any(ElStmt::lookaheads()) {
+            let el_stmt = self.expect_el_stmt()?;
+            tokens.append_node(&el_stmt);
+            Some(el_stmt)
+        }
+        else {
+            None
+        };
+        Ok(BrStmt::new(tokens, block, el_stmt))
+    }
+
+    fn expect_el_stmt(&mut self) -> Result<ElStmt> {
+        let mut tokens = vec![self.match_any(ElStmt::lookaheads())?.into_rc()];
+        let block = self.expect_block()?;
+        tokens.append_node(&block);
+        Ok(ElStmt::new(tokens, block))
+    }
+
     fn expect_stack_stmt(&mut self) -> Result<StackStmt> {
         let mut tokens = vec![];
         let mut actions = vec![];
         while !self.can_match_token(TokenType::Semi) && self.curr.is_some() {
             let action = self.expect_stack_action()?;
-            tokens.extend_from_slice(action.tokens());
+            tokens.append_node(&action);
             actions.push(action);
         }
         tokens.push(self.match_token(TokenType::Semi)?.into_rc());
@@ -153,7 +214,7 @@ impl<'c> Parser<'c> {
         else {
             let mut tokens = vec![self.match_token(TokenType::Dot)?.into_rc()];
             let item = self.expect_item()?;
-            tokens.extend_from_slice(item.tokens());
+            tokens.append_node(&item);
             Ok(StackAction::Pop(tokens, item))
         }
     }
@@ -167,7 +228,7 @@ impl<'c> Parser<'c> {
                 let mut items = vec![];
                 while !self.can_match_token(TokenType::RBrack) {
                     let item = self.expect_item()?;
-                    tokens.extend_from_slice(item.tokens());
+                    tokens.append_node(&item);
                     items.push(item);
                 }
                 tokens.push(self.match_token(TokenType::RBrack)?.into_rc());
@@ -211,6 +272,41 @@ mod test {
         }
     }
 
+    macro_rules! stmt {
+        (Stack $($tail:tt)* ) => { Stmt::Stack(stack_stmt!($($tail)*)) };
+        (Br { $($tail:tt)* } ) => { Stmt::Br(br_stmt!(($($tail)*))) };
+        (Br { $($br_tail:tt)* } El { $($el_tail:tt)* } ) => { Stmt::Br(br_stmt!(($($br_tail)*), ($($el_tail)*))) };
+        (Loop { $($tail:tt)* } ) => { Stmt::Loop(loop_stmt!($($tail)*)) };
+    }
+
+    macro_rules! block {
+        ($(($($args:tt)+))*) => {
+            Block::new(vec![], vec![ $( stmt!($($args)+) ),* ])
+        }
+    }
+
+    macro_rules! loop_stmt {
+        ( $($block:tt)* ) => {
+            LoopStmt::new(vec![], block!($( $block )*))
+        }
+    }
+
+    macro_rules! br_stmt {
+        ( ( $($br_args:tt)* ), ( $($el_args:tt)* ) ) => {
+            BrStmt::new(vec![], block!($($br_args)*), Some(el_stmt!($($el_args)*)))
+        };
+
+        ( ( $($br_args:tt)* ) ) => {
+            BrStmt::new(vec![], block!($($br_args)*), None)
+        };
+    }
+
+    macro_rules! el_stmt {
+        ( $($args:tt)* ) => {
+            ElStmt::new(vec![], block!($($args)*))
+        };
+    }
+
     macro_rules! stack_stmt {
         (@ $which:ident Nil $($args:tt)*) => {{
             let mut v = stack_stmt!(@ $($args)*);
@@ -249,7 +345,7 @@ mod test {
     }
 
     #[test]
-    fn test_parser_stack_stmts() {
+    fn test_parser_stmts() {
         tests! {
             r#"
             1 2 3 .a .b .c;
@@ -257,12 +353,28 @@ mod test {
             ;
             @ [1 2 3 4 5] ;
             a .a b .foo c .bar d .x e .2 f .@ ;
+            loop {
+                .@;
+                pop ^ println 0 ==;
+            }
+            br {
+                "success" println;
+                br {
+                    "success message: " print println;
+                }
+            }
+            el {
+                "failure:" println;
+                loop {
+                    "\t" print println;
+                }
+            }
             "#,
-            (expect_stack_stmt, stack_stmt!(Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c"))
-            (expect_stack_stmt, stack_stmt!(Push Ident "$" Pop Nil))
-            (expect_stack_stmt, stack_stmt!())
-            (expect_stack_stmt, stack_stmt!(Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)]))
-            (expect_stack_stmt, stack_stmt!(
+            (expect_stmt, stmt!(Stack Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c"))
+            (expect_stmt, stmt!(Stack Push Ident "$" Pop Nil))
+            (expect_stmt, stmt!(Stack ))
+            (expect_stmt, stmt!(Stack Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)]))
+            (expect_stmt, stmt!(Stack
                     Push Ident "a"
                     Pop Ident "a"
                     Push Ident "b"
@@ -275,6 +387,24 @@ mod test {
                     Pop Int 2
                     Push Ident "f"
                     Pop Nil
+            ))
+            (expect_stmt, stmt!(Loop {
+                (Stack Pop Nil)
+                (Stack Push Ident "pop" Push Ident "^" Push Ident "println" Push Int 0 Push Ident "==")
+            }))
+            (expect_stmt, stmt!(
+                Br {
+                    (Stack Push String "success" Push Ident "println")
+                    (Br {
+                        (Stack Push String "success message: " Push Ident "print" Push Ident "println")
+                    })
+                }
+                El {
+                    (Stack Push String "failure:" Push Ident "println")
+                    (Loop {
+                        (Stack Push String "\t" Push Ident "print" Push Ident "println")
+                    })
+                }
             ))
         }
     }
