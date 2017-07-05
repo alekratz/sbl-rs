@@ -433,3 +433,61 @@ pub struct LoopStmt {
 block_stmt!(LoopStmt
             new => (block: Block)
             lookaheads => (TokenType::KwLoop));
+
+//
+// Top level statements
+//
+pub enum TopLevel {
+    Fun(Fun),
+    Import(Import),
+}
+
+pub struct Fun {
+    tokens: Tokens,
+    name: String,
+    block: Block,
+}
+
+impl Fun {
+    pub fn new(tokens: Tokens, name: String, block: Block) -> Self {
+        Fun {
+            tokens,
+            name,
+            block,
+        }
+    }
+}
+
+impl ASTNode for Fun {
+    fn tokens(&self) -> &[Rc<Token>] {
+        &self.tokens
+    }
+
+    fn lookaheads() -> &'static [TokenType] {
+        lookaheads!(TokenType::Ident)
+    }
+}
+
+pub struct Import {
+    tokens: Tokens,
+    path: String,
+}
+
+impl Import {
+    pub fn new(tokens: Tokens, path: String) -> Self {
+        Import {
+            tokens, path,
+        }
+    }
+}
+
+impl ASTNode for Import {
+    fn tokens(&self) -> &[Rc<Token>] {
+        &self.tokens
+    }
+
+    fn lookaheads() -> &'static [TokenType] {
+        lookaheads!(TokenType::KwImport)
+    }
+}
+

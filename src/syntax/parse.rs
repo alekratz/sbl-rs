@@ -137,6 +137,27 @@ impl<'c> Parser<'c> {
     /*
      * Grammar rules
      */
+    fn expect_top_level(&mut self) -> Result<TopLevel> {
+        unimplemented!()
+    }
+
+    fn expect_import(&mut self) -> Result<Import> {
+        let mut tokens = vec![self.match_any(Import::lookaheads())?.into_rc()];
+        let str_token = self.match_token(TokenType::String)?;
+        let path = str_token.unescape();
+        tokens.push(str_token.into_rc());
+        tokens.push(self.match_token(TokenType::Semi)?.into_rc());
+        Ok(Import::new(tokens, path))
+    }
+
+    fn expect_fun(&mut self) -> Result<Fun> {
+        let mut tokens = vec![self.match_any(Fun::lookaheads())?.into_rc()];
+        let name = tokens[0].as_str().to_string();
+        let block = self.expect_block()?;
+        tokens.append_node(&block);
+        Ok(Fun::new(tokens, name, block))
+    }
+
     fn expect_stmt(&mut self) -> Result<Stmt> {
         if self.can_match_any(BrStmt::lookaheads()) {
             Ok(Stmt::Br(self.expect_br_stmt()?))
