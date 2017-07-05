@@ -1,8 +1,28 @@
 use std::rc::Rc;
 use std::fmt::{Formatter, Debug, Display, self};
+use std::fs::File;
+use std::path::Path;
+use std::io::{Read, self};
 
 pub type RcStr = Rc<String>;
-pub type PosIndex = isize;
+
+macro_rules! printerr {
+    ($arg:expr $(, $tail:tt)*) => {
+        use std::io::{self, Write};
+        let mut stderr = io::stderr();
+        writeln!(stderr, $arg $(, $tail)*).unwrap();
+    };
+}
+
+/// Reads a file from the given path.
+pub fn read_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
+    let mut source_text = String::new();
+    {
+        let mut file = File::open(path)?;
+        file.read_to_string(&mut source_text)?;
+    }
+    Ok(source_text)
+}
 
 /*
  * Positions

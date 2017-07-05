@@ -51,7 +51,6 @@ pub enum TokenType {
 
     // Symbols
     Dot,
-    Nil,
     Semi,
     LBrace,
     RBrace,
@@ -81,7 +80,6 @@ impl Display for TokenType {
 
             // Symbols
             Dot => "dot",
-            Nil => "nil",
             Semi => "semi",
             LBrace => "lbrace",
             RBrace => "rbrace",
@@ -106,6 +104,8 @@ pub struct Token {
     token_type: TokenType,
     range: Range,
 }
+
+pub type RcToken = Rc<Token>;
 
 impl Token {
     pub fn new(token_type: TokenType, range: Range) -> Self {
@@ -134,10 +134,6 @@ impl Token {
 
     pub fn token_type(&self) -> TokenType {
         self.token_type
-    }
-
-    pub fn to_rc(&self) -> Rc<Token> {
-        Rc::new(self.clone())
     }
 
     pub fn into_rc(self) -> Rc<Token> {
@@ -183,8 +179,6 @@ impl PartialEq for Token {
 }
 
 pub struct Tokenizer<'c> {
-    source_path: RcStr,
-    source_text: RcStr,
     curr: Option<char>,
     next: Option<char>,
     curr_range: Range,
@@ -199,8 +193,6 @@ impl<'c> Tokenizer<'c> {
         let rc_path = Rc::new(source_path.to_string());
 
         let mut t = Tokenizer {
-            source_path: rc_path.clone(),
-            source_text: rc_text.clone(),
             curr_range: Range::new_curr(rc_path.clone(), rc_text.clone()),
             next_range: Range::new_next(rc_path, rc_text),
             curr: None,
@@ -235,12 +227,6 @@ impl<'c> Tokenizer<'c> {
             self.next_range.line();
         }
         old
-    }
-
-    fn can_match_char(&self, c: char) -> bool {
-        self.curr
-            .map(|other| c == other)
-            .unwrap_or(false)
     }
 
     fn try_match_char(&mut self, c: char) -> bool {
@@ -417,7 +403,7 @@ impl<'c> Tokenizer<'c> {
                 }
             };
         };
-        self.match_any_char(IDENT_CHARS);
+        self.match_any_char(IDENT_CHARS)?;
         while self.try_match_any(IDENT_CHARS).is_some() { }
         if let Some(ty) = KEYWORDS.get(self.curr_range.as_str()) {
             self.ok_token(*ty)

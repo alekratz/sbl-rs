@@ -1,4 +1,3 @@
-use common::*;
 use errors::*;
 use syntax::token::*;
 use syntax::ast::*;
@@ -23,7 +22,11 @@ impl<'c> Parser<'c> {
     }
 
     pub fn parse(&mut self) -> Result<AST> {
-        unimplemented!()
+        let mut ast = AST::new();
+        while !self.is_end() {
+            ast.push(self.expect_top_level()?);
+        }
+        Ok(ast)
     }
 
     fn match_token(&mut self, token_type: TokenType) -> Result<Token> {
@@ -57,36 +60,6 @@ impl<'c> Parser<'c> {
                 .collect::<Vec<_>>()
                 .join(", ");
             Err(format!("expected any token of {}; instead got `{}`", expected_types, curr.token_type()).into())
-        }
-    }
-
-    fn try_match_token(&mut self, token_type: TokenType) -> Result<Option<Token>> {
-        if let Some(curr) = self.curr.clone() {
-            if curr.token_type() == token_type {
-                self.next_token()?;
-                Ok(Some(curr))
-            }
-            else {
-                Ok(None)
-            }
-        }
-        else {
-            Ok(None)
-        }
-    }
-
-    fn try_match_any(&mut self, token_types: &[TokenType]) -> Result<Option<Token>> {
-        if let Some(curr) = self.curr.clone() {
-            if token_types.contains(&curr.token_type()) {
-                self.next_token()?;
-                Ok(Some(curr))
-            }
-            else {
-                Ok(None)
-            }
-        }
-        else {
-            Ok(None)
         }
     }
 
@@ -138,7 +111,19 @@ impl<'c> Parser<'c> {
      * Grammar rules
      */
     fn expect_top_level(&mut self) -> Result<TopLevel> {
-        unimplemented!()
+        if self.can_match_any(Import::lookaheads()) {
+            Ok(TopLevel::Import(self.expect_import()?))
+        }
+        else if self.can_match_any(Fun::lookaheads()) {
+            Ok(TopLevel::Fun(self.expect_fun()?))
+        }
+        else {
+            let mut all = vec![];
+            all.extend_from_slice(Fun::lookaheads());
+            all.extend_from_slice(Import::lookaheads());
+            self.match_any(&all)?;
+            unreachable!()
+        }
     }
 
     fn expect_import(&mut self) -> Result<Import> {
@@ -293,6 +278,20 @@ mod test {
         }
     }
 
+    // AST Items
+    macro_rules! top_level {
+        (Fun $($tail:tt)+) => { TopLevel::Fun(fun!($($tail)+)) };
+        (Import $($tail:tt)+) => { TopLevel::Import(import!($($tail)+)) };
+    }
+
+    macro_rules! fun {
+        ($name:expr => { $($tail:tt)* }) => { Fun::new(vec![], $name.to_string(), block!($($tail)*)) };
+    }
+
+    macro_rules! import {
+        ($path:expr) => { Import::new(vec![], $path.to_string()) };
+    }
+
     macro_rules! stmt {
         (Stack $($tail:tt)* ) => { Stmt::Stack(stack_stmt!($($tail)*)) };
         (Br { $($tail:tt)* } ) => { Stmt::Br(br_stmt!(($($tail)*))) };
@@ -363,6 +362,82 @@ mod test {
                 )
         };
         ($type:ident $value:expr) => { Item::new(vec![], ItemType::$type($value)) };
+    }
+
+    #[test]
+    fn test_parser_ast() {
+        tests! {
+            r#"
+            import "test.sbl";
+            import "basic.sbl";
+            foo {
+                1 2 3 .a .b .c;
+                $ .@;
+                ;
+                @ [1 2 3 4 5] ;   
+            }
+
+            main {
+                a .a b .foo c .bar d .x e .2 f .@ ;
+                loop {
+                    .@;
+                    pop ^ println 0 ==;
+                }
+                br {
+                    "success" println;
+                    br {
+                        "success message: " print println;
+                    }
+                }
+                el {
+                    "failure:" println;
+                    loop {
+                        "\t" print println;
+                    }
+                }
+            }
+            "#,
+
+            (expect_top_level, top_level!(Import "test.sbl"))
+            (expect_top_level, top_level!(Import "basic.sbl"))
+            (expect_top_level, top_level!(Fun "foo" => {
+                (Stack Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c")
+                (Stack Push Ident "$" Pop Nil)
+                (Stack )
+                (Stack Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)])
+            }))
+            (expect_top_level, top_level!(Fun "main" => {
+                (Stack
+                    Push Ident "a"
+                    Pop Ident "a"
+                    Push Ident "b"
+                    Pop Ident "foo"
+                    Push Ident "c"
+                    Pop Ident "bar"
+                    Push Ident "d"
+                    Pop Ident "x"
+                    Push Ident "e"
+                    Pop Int 2
+                    Push Ident "f"
+                    Pop Nil)
+                (Loop {
+                    (Stack Pop Nil)
+                    (Stack Push Ident "pop" Push Ident "^" Push Ident "println" Push Int 0 Push Ident "==")
+                })
+                (Br {
+                    (Stack Push String "success" Push Ident "println")
+                    (Br {
+                        (Stack Push String "success message: " Push Ident "print" Push Ident "println")
+                    })
+                }
+                El {
+                    (Stack Push String "failure:" Push Ident "println")
+                    (Loop {
+                        (Stack Push String "\t" Push Ident "print" Push Ident "println")
+                    })
+                })
+            }))
+        };
     }
 
     #[test]

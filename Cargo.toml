@@ -1,9 +1,11 @@
 [package]
 name = "sbl-rs"
 version = "0.1.0"
-authors = ["Alek Ratzloff"]
+authors = ["Alek Ratzloff <alekratz@gmail.com>"]
+description = "SBL - a stack based language"
 
 [dependencies]
 error-chain = "0.10.0"
 lazy_static = "0.2"
 maplit = "0.1.4"
+clap = "2.25"

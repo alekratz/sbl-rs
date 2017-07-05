@@ -1,10 +1,9 @@
 use common::*;
-use errors::*;
 use syntax::token::*;
-use std::rc::Rc;
+#[cfg(test)]
 use std::fmt::{Formatter, Debug, self};
 
-pub type Tokens = Vec<Rc<Token>>;
+pub type Tokens = Vec<RcToken>;
 
 /// A trait which appends a node's tokens to a Vec.
 pub trait AppendNode {
@@ -17,14 +16,13 @@ impl AppendNode for Tokens {
     }
 }
 
-pub struct AST;
+pub type AST = Vec<TopLevel>;
 
 pub trait ASTNode {
     fn lookaheads() -> &'static [TokenType];
-    fn tokens(&self) -> &[Rc<Token>];
+    fn tokens(&self) -> &[RcToken];
     fn range(&self) -> Range {
         let tokens = self.tokens();
-        //assert!(!tokens.is_empty());
         let start = tokens.first()
             .unwrap()
             .range()
@@ -111,7 +109,7 @@ impl Debug for Item {
 }
 
 impl ASTNode for Item {
-    fn tokens(&self) -> &[Rc<Token>] {
+    fn tokens(&self) -> &[RcToken] {
         self.tokens
             .as_slice()
     }
@@ -166,6 +164,7 @@ impl StackAction {
         }
     }
 
+    #[cfg(test)]
     pub fn is_push(&self) -> bool {
         use self::StackAction::*;
         match *self {
@@ -174,6 +173,7 @@ impl StackAction {
         }
     }
 
+    #[cfg(test)]
     pub fn is_pop(&self) -> bool {
         ! self.is_push()
     }
@@ -184,7 +184,7 @@ impl ASTNode for StackAction {
         lookaheads!(Item TokenType::Dot)
     }
 
-    fn tokens(&self) -> &[Rc<Token>] {
+    fn tokens(&self) -> &[RcToken] {
         match self {
             &StackAction::Push(ref i) => i.tokens(),
             &StackAction::Pop(ref t, _) => t,
@@ -226,7 +226,7 @@ pub enum Stmt {
 }
 
 impl ASTNode for Stmt {
-    fn tokens(&self) -> &[Rc<Token>] {
+    fn tokens(&self) -> &[RcToken] {
         match *self {
             Stmt::Stack(ref s) => s.tokens(),
             Stmt::Br(ref s) => s.tokens(),
@@ -305,7 +305,7 @@ impl ASTNode for StackStmt {
         lookaheads!(StackAction TokenType::Semi)
     }
 
-    fn tokens(&self) -> &[Rc<Token>] {
+    fn tokens(&self) -> &[RcToken] {
         &self.tokens
     }
 }
@@ -361,7 +361,7 @@ macro_rules! block_stmt {
     };
     (@ $name:ident lookaheads => ($($lookaheads:tt)+) $($tail:tt)*) => {
         impl ASTNode for $name {
-            fn tokens(&self) -> &[Rc<Token>] {
+            fn tokens(&self) -> &[RcToken] {
                 &self.tokens
             }
             
@@ -437,11 +437,15 @@ block_stmt!(LoopStmt
 //
 // Top level statements
 //
+
+#[derive(Clone, PartialEq, Debug)]
 pub enum TopLevel {
     Fun(Fun),
     Import(Import),
 }
 
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Fun {
     tokens: Tokens,
     name: String,
@@ -459,7 +463,7 @@ impl Fun {
 }
 
 impl ASTNode for Fun {
-    fn tokens(&self) -> &[Rc<Token>] {
+    fn tokens(&self) -> &[RcToken] {
         &self.tokens
     }
 
@@ -468,6 +472,22 @@ impl ASTNode for Fun {
     }
 }
 
+#[cfg(test)]
+impl PartialEq for Fun {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.block == other.block
+    }
+}
+
+#[cfg(test)]
+impl Debug for Fun {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Fun {{ name: {:?} block: {:?} }}", self.name, self.block)
+    }
+}
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Import {
     tokens: Tokens,
     path: String,
@@ -482,7 +502,7 @@ impl Import {
 }
 
 impl ASTNode for Import {
-    fn tokens(&self) -> &[Rc<Token>] {
+    fn tokens(&self) -> &[RcToken] {
         &self.tokens
     }
 
@@ -491,3 +511,16 @@ impl ASTNode for Import {
     }
 }
 
+#[cfg(test)]
+impl PartialEq for Import {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
+}
+
+#[cfg(test)]
+impl Debug for Import {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Import {{ path: {:?} }}", self.path)
+    }
+}
