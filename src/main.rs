@@ -29,8 +29,8 @@ fn process_contents(path: &str, contents: String) -> Result<()> {
     let ast = parser.parse()?;
     let compiler = Compiler::new(&ast);
     let fun_table = compiler.compile()?;
-
-    Ok(())
+    let mut vm = VM::new(fun_table);
+    vm.run()
 }
 
 fn print_error_chain<T: ChainedError>(err_chain: T) {

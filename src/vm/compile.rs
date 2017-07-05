@@ -1,6 +1,7 @@
 use vm::*;
 use syntax::*;
 use errors::*;
+use std::rc::Rc;
 
 pub struct Compiler<'ast> {
     ast: &'ast AST,
@@ -27,7 +28,7 @@ impl<'ast> Compiler<'ast> {
                 block.push(Bc::ret(fun.tokens().into()));
                 let built_fun = Fun::new(fun_name, block, fun.tokens().into());
 
-                self.fun_table.insert(built_fun.name().into(), built_fun);
+                self.fun_table.insert(built_fun.name().into(), Rc::new(built_fun));
             }
             else {
                 println!("skipping unprocessed `import` statement");

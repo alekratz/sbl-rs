@@ -1,9 +1,12 @@
 mod compile;
+mod vm;
 
 pub use self::compile::*;
+pub use self::vm::*;
 
 use syntax::*;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum Val {
@@ -14,6 +17,16 @@ pub enum Val {
     Bool(bool),
     Stack(Vec<Val>),
     Nil,
+}
+
+impl Val {
+    pub fn int(&self) -> i64 { if let &Val::Int(ref v) = self { *v } else { panic!("called int() on {:?}", self) } }
+    pub fn ident(&self) -> &str { if let &Val::Ident(ref v) = self { v } else { panic!("called ident() on {:?}", self) } }
+    pub fn char(&self) -> char { if let &Val::Char(ref v) = self { *v } else { panic!("called char() on {:?}", self) } }
+    pub fn string(&self) -> &str { if let &Val::String(ref v) = self { v } else { panic!("called string() on {:?}", self) } }
+    pub fn bool(&self) -> bool { if let &Val::Bool(ref v) = self { *v } else { panic!("called bool() on {:?}", self) } }
+    pub fn stack(&self) -> &[Val] { if let &Val::Stack(ref v) = self { v } else { panic!("called stack() on {:?}", self) } }
+    pub fn is_nil(&self) -> bool { self == &Val::Nil }
 }
 
 impl From<Item> for Val {
@@ -37,6 +50,7 @@ impl<'a> From<&'a Item> for Val {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum BcType {
     Push,
     PushL,
@@ -49,6 +63,7 @@ pub enum BcType {
     Ret,
 }
 
+#[derive(Clone, PartialEq, Debug)]
 pub struct Bc {
     bc_type: BcType,
     tokens: Tokens,
@@ -56,6 +71,22 @@ pub struct Bc {
 }
 
 impl Bc {
+    pub fn bc_type(&self) -> &BcType {
+        &self.bc_type
+    }
+
+    pub fn tokens(&self) -> &[RcToken] {
+        &self.tokens
+    }
+
+    pub fn val(&self) -> Option<&Val> {
+        self.val.as_ref()
+    }
+
+    pub fn val_clone(&self) -> Option<Val> {
+        self.val.clone()
+    }
+
     pub fn push(tokens: Tokens, val: Val) -> Bc {
         Bc { bc_type: BcType::Push, tokens, val: Some(val) }
     }
@@ -124,4 +155,4 @@ impl Fun {
     }
 }
 
-pub type FunTable = HashMap<String, Fun>;
+pub type FunTable = HashMap<String, Rc<Fun>>;
