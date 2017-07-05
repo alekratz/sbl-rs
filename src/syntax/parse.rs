@@ -114,12 +114,12 @@ impl<'c> Parser<'c> {
         if self.can_match_any(Import::lookaheads()) {
             Ok(TopLevel::Import(self.expect_import()?))
         }
-        else if self.can_match_any(Fun::lookaheads()) {
-            Ok(TopLevel::Fun(self.expect_fun()?))
+        else if self.can_match_any(FunDef::lookaheads()) {
+            Ok(TopLevel::FunDef(self.expect_fun()?))
         }
         else {
             let mut all = vec![];
-            all.extend_from_slice(Fun::lookaheads());
+            all.extend_from_slice(FunDef::lookaheads());
             all.extend_from_slice(Import::lookaheads());
             self.match_any(&all)?;
             unreachable!()
@@ -135,12 +135,12 @@ impl<'c> Parser<'c> {
         Ok(Import::new(tokens, path))
     }
 
-    fn expect_fun(&mut self) -> Result<Fun> {
-        let mut tokens = vec![self.match_any(Fun::lookaheads())?.into_rc()];
+    fn expect_fun(&mut self) -> Result<FunDef> {
+        let mut tokens = vec![self.match_any(FunDef::lookaheads())?.into_rc()];
         let name = tokens[0].as_str().to_string();
         let block = self.expect_block()?;
         tokens.append_node(&block);
-        Ok(Fun::new(tokens, name, block))
+        Ok(FunDef::new(tokens, name, block))
     }
 
     fn expect_stmt(&mut self) -> Result<Stmt> {
@@ -280,12 +280,12 @@ mod test {
 
     // AST Items
     macro_rules! top_level {
-        (Fun $($tail:tt)+) => { TopLevel::Fun(fun!($($tail)+)) };
+        (FunDef $($tail:tt)+) => { TopLevel::FunDef(fun!($($tail)+)) };
         (Import $($tail:tt)+) => { TopLevel::Import(import!($($tail)+)) };
     }
 
     macro_rules! fun {
-        ($name:expr => { $($tail:tt)* }) => { Fun::new(vec![], $name.to_string(), block!($($tail)*)) };
+        ($name:expr => { $($tail:tt)* }) => { FunDef::new(vec![], $name.to_string(), block!($($tail)*)) };
     }
 
     macro_rules! import {
@@ -400,13 +400,13 @@ mod test {
 
             (expect_top_level, top_level!(Import "test.sbl"))
             (expect_top_level, top_level!(Import "basic.sbl"))
-            (expect_top_level, top_level!(Fun "foo" => {
+            (expect_top_level, top_level!(FunDef "foo" => {
                 (Stack Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c")
                 (Stack Push Ident "$" Pop Nil)
                 (Stack )
                 (Stack Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)])
             }))
-            (expect_top_level, top_level!(Fun "main" => {
+            (expect_top_level, top_level!(FunDef "main" => {
                 (Stack
                     Push Ident "a"
                     Pop Ident "a"

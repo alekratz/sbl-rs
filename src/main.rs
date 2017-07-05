@@ -6,6 +6,8 @@ extern crate lazy_static;
 extern crate maplit;
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate matches;
 
 mod syntax;
 mod vm;
@@ -14,8 +16,29 @@ mod common;
 mod errors { error_chain!{} }
 
 use common::read_file;
+use errors::*;
 use syntax::*;
+use vm::*;
+use error_chain::ChainedError;
 use std::process;
+
+fn process_contents(path: &str, contents: String) -> Result<()> {
+    // set up tokenizer and parser
+    let tokenizer = Tokenizer::new(path, &contents);
+    let mut parser = Parser::new(tokenizer);
+    let ast = parser.parse()?;
+    let compiler = Compiler::new(&ast);
+    let fun_table = compiler.compile()?;
+
+    Ok(())
+}
+
+fn print_error_chain<T: ChainedError>(err_chain: T) {
+    printerr!("{}", err_chain.iter().nth(0).unwrap());
+    for err in err_chain.iter().skip(1) {
+        printerr!("... {}", err);
+    }
+}
 
 fn main() {
     let matches = clap_app!((crate_name!())=>
@@ -37,8 +60,8 @@ fn main() {
         }
     };
 
-    // set up tokenizer and parser
-    let tokenizer = Tokenizer::new(input_file, &contents);
-    let mut parser = Parser::new(tokenizer);
-    println!("{:#?}", parser.parse());
+    if let Err(e) = process_contents(input_file, contents) {
+        print_error_chain(e);
+        process::exit(1);
+    }
 }

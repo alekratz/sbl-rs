@@ -7,7 +7,7 @@ use std::io::{Read, self};
 pub type RcStr = Rc<String>;
 
 macro_rules! printerr {
-    ($arg:expr $(, $tail:tt)*) => {
+    ($arg:expr $(, $tail:expr)*) => {
         use std::io::{self, Write};
         let mut stderr = io::stderr();
         writeln!(stderr, $arg $(, $tail)*).unwrap();

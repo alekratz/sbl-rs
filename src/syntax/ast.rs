@@ -71,6 +71,12 @@ pub enum ItemType {
     Nil,
 }
 
+impl From<Item> for ItemType {
+    fn from(item: Item) -> Self {
+        item.item_type
+    }
+}
+
 /// The Item AST node.
 /// This is an atomic type; no further constructs are parsed above the "item"
 /// level with this node.
@@ -91,6 +97,14 @@ impl Item {
 
     pub fn item_type(&self) -> &ItemType {
         &self.item_type
+    }
+
+    pub fn is_const(&self) -> bool {
+        match self.item_type() {
+            &ItemType::Ident(_) => false,
+            &ItemType::Stack(ref s) => s.iter().all(Item::is_const),
+            _ => true,
+        }
     }
 }
 
@@ -337,6 +351,12 @@ macro_rules! block_stmt {
                     $( $param , )*
                 }
             }
+
+            $(
+            pub fn $param(&self) -> &$type {
+                &self.$param
+            }
+            )*
         }
 
         #[cfg(test)]
@@ -440,29 +460,37 @@ block_stmt!(LoopStmt
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum TopLevel {
-    Fun(Fun),
+    FunDef(FunDef),
     Import(Import),
 }
 
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
-pub struct Fun {
+pub struct FunDef {
     tokens: Tokens,
     name: String,
     block: Block,
 }
 
-impl Fun {
+impl FunDef {
     pub fn new(tokens: Tokens, name: String, block: Block) -> Self {
-        Fun {
+        FunDef {
             tokens,
             name,
             block,
         }
     }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn block(&self) -> &Block {
+        &self.block
+    }
 }
 
-impl ASTNode for Fun {
+impl ASTNode for FunDef {
     fn tokens(&self) -> &[RcToken] {
         &self.tokens
     }
@@ -473,16 +501,16 @@ impl ASTNode for Fun {
 }
 
 #[cfg(test)]
-impl PartialEq for Fun {
+impl PartialEq for FunDef {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.block == other.block
     }
 }
 
 #[cfg(test)]
-impl Debug for Fun {
+impl Debug for FunDef {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Fun {{ name: {:?} block: {:?} }}", self.name, self.block)
+        write!(f, "FunDef {{ name: {:?} block: {:?} }}", self.name, self.block)
     }
 }
 
@@ -498,6 +526,10 @@ impl Import {
         Import {
             tokens, path,
         }
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
     }
 }
 
