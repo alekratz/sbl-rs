@@ -9,7 +9,7 @@ use syntax::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(EnumMethods, PartialEq, Clone, Debug)]
 pub enum Val {
     Int(i64),
     Ident(String),
@@ -21,6 +21,7 @@ pub enum Val {
 }
 
 impl Val {
+    /*
     pub fn int(&self) -> i64 { if let &Val::Int(ref v) = self { *v } else { panic!("called int() on {:?}", self) } }
     pub fn ident(&self) -> &str { if let &Val::Ident(ref v) = self { v } else { panic!("called ident() on {:?}", self) } }
     pub fn char(&self) -> char { if let &Val::Char(ref v) = self { *v } else { panic!("called char() on {:?}", self) } }
@@ -28,6 +29,7 @@ impl Val {
     pub fn bool(&self) -> bool { if let &Val::Bool(ref v) = self { *v } else { panic!("called bool() on {:?}", self) } }
     pub fn stack(&self) -> &[Val] { if let &Val::Stack(ref v) = self { v } else { panic!("called stack() on {:?}", self) } }
     pub fn is_nil(&self) -> bool { self == &Val::Nil }
+    */
 }
 
 impl From<Item> for Val {

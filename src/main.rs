@@ -8,6 +8,8 @@ extern crate maplit;
 extern crate clap;
 #[macro_use]
 extern crate matches;
+#[macro_use]
+extern crate enum_methods;
 
 mod syntax;
 mod vm;
