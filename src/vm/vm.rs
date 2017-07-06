@@ -1,5 +1,6 @@
 use errors::*;
 use vm::*;
+use vm::builtins::*;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
@@ -35,7 +36,7 @@ impl From<Rc<Fun>> for FunState {
     }
 }
 
-pub struct State {
+pub(in vm) struct State {
     pub stack: Vec<Val>,
     pub call_stack: Vec<FunState>,
 }
