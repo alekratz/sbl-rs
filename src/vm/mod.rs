@@ -4,10 +4,12 @@ mod builtins;
 
 pub use self::compile::*;
 pub use self::vm::*;
+pub(in vm) use self::builtins::*;
 
 use syntax::*;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::fmt::{Formatter, Display, self};
 
 #[derive(EnumGetters, EnumIsA, PartialEq, Clone, Debug)]
 pub enum Val {
@@ -18,6 +20,34 @@ pub enum Val {
     Bool(bool),
     Stack(Vec<Val>),
     Nil,
+}
+
+impl Val {
+    pub fn matches(&self, other: &Self) -> bool {
+        match self {
+            &Val::Int(_) => other.is_int(),
+            &Val::Ident(_) => other.is_ident(),
+            &Val::Char(_) => other.is_char(),
+            &Val::String(_) => other.is_string(),
+            &Val::Bool(_) => other.is_bool(),
+            &Val::Stack(_) => other.is_stack(),
+            &Val::Nil => other.is_nil(),
+        }
+    }
+}
+
+impl Display for Val {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            &Val::Int(i) => write!(f, "{}", i),
+            &Val::Ident(ref s) => write!(f, "{}", s),
+            &Val::Char(c) => write!(f, "{}", c),
+            &Val::String(ref s) => write!(f, "{}", s),
+            &Val::Bool(b) => write!(f, "{}", b),
+            &Val::Stack(ref v) => write!(f, "[{}]", v.iter().map(Val::to_string).collect::<Vec<_>>().join(",")),
+            &Val::Nil => write!(f, "nil"),
+        }
+    }
 }
 
 impl From<Item> for Val {

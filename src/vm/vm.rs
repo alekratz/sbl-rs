@@ -119,6 +119,10 @@ impl State {
         let fun = self.current_fun_mut();
         fun.pc = pc;
     }
+
+    pub fn stack_size(&self) -> usize {
+        self.stack.len()
+    }
 }
 
 pub struct VM {
@@ -145,6 +149,9 @@ impl VM {
                 .borrow_mut();
             state.push_fun(fun.clone().into());
         }
+        else if let Some(fun) = BUILTINS.get(fun_name) {
+            return fun(&mut self.state.borrow_mut());
+        }
         else {
             return Err(format!("tried to call undefined function `{}`", fun_name).into());
         }
@@ -156,7 +163,6 @@ impl VM {
                 let ref bc = fun.fun.body()[fun.pc];
                 (*bc.bc_type(), bc.val_clone())
             };
-
 
             {
                 match bc_type {

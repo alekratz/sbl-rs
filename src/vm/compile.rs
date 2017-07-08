@@ -3,38 +3,58 @@ use syntax::*;
 use errors::*;
 use std::rc::Rc;
 
+/// A BoringTable is the predecessor to a FunTable; function names are first
+/// gathered, and then filled in.
+type BoringTable = HashMap<String, Option<Rc<Fun>>>;
+
 pub struct Compiler<'ast> {
     ast: &'ast AST,
-    fun_table: FunTable,
+    fun_table: BoringTable,
 }
 
 impl<'ast> Compiler<'ast> {
     pub fn new(ast: &'ast AST) -> Self {
         // TODO : builtins
-        Compiler { ast, fun_table: FunTable::new() }
+        Compiler { ast, fun_table: BoringTable::new() }
     }
 
     /// Consumes the compiler, producing a `FunTable` on success or message on
     /// error.
     pub fn compile(mut self) -> Result<FunTable> {
+        self.fill_boring_table();
         for top_level in self.ast {
             if let &TopLevel::FunDef(ref fun) = top_level {
                 let fun_name = fun.name()
                     .to_string();
-                if self.fun_table.contains_key(fun_name.as_str()) {
-                    return Err(format!("function already exists: `{}`", &fun_name).into());
+                {
+                    let fun_entry = self.fun_table.get(&fun_name)
+                        .expect("got function with name that was not filled out");
+                    if fun_entry.is_some() {
+                        return Err(format!("function already exists: `{}`", &fun_name).into());
+                    }
                 }
                 let mut block = self.compile_block(fun.block(), 0)?;
                 block.push(Bc::ret(fun.tokens().into()));
                 let built_fun = Fun::new(fun_name, block, fun.tokens().into());
 
-                self.fun_table.insert(built_fun.name().into(), Rc::new(built_fun));
+                self.fun_table.insert(built_fun.name().into(), Some(Rc::new(built_fun)));
             }
             else {
                 println!("skipping unprocessed `import` statement");
             }
         }
-        Ok(self.fun_table)
+        Ok(self.fun_table.into_iter().map(|(k, v)| (k, v.unwrap())).collect())
+    }
+
+    fn fill_boring_table(&mut self) {
+        for top_level in self.ast {
+            if let &TopLevel::FunDef(ref fun) = top_level {
+                self.fun_table.insert(fun.name().to_string(), None);
+            }
+            else {
+                println!("skipping unprocessed `import` statement");
+            }
+        }
     }
 
     fn compile_block(&self, block: &'ast Block, jmp_offset: usize) -> Result<BcBody> {
@@ -107,7 +127,7 @@ impl<'ast> Compiler<'ast> {
                 self.compile_local_stack(item)
             },
             &ItemType::Ident(ref ident) => {
-                if self.fun_table.contains_key(ident) {
+                if self.fun_table.contains_key(ident) || BUILTINS.contains_key(ident.as_str()) {
                     Ok(vec![Bc::call(item.tokens().into(), item.into())])
                 }
                 else {

@@ -60,7 +60,7 @@ macro_rules! lookaheads {
 // Items
 //
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(EnumIsA, PartialEq, Clone, Debug)]
 pub enum ItemType {
     Int(i64),
     Ident(String),
