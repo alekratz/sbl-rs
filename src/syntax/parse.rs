@@ -21,8 +21,8 @@ impl<'c> Parser<'c> {
         self.curr.is_none()
     }
 
-    pub fn parse(&mut self) -> Result<AST> {
-        let mut ast = AST::new();
+    pub fn parse(&mut self) -> Result<TopLevelList> {
+        let mut ast = TopLevelList::new();
         while !self.is_end() {
             ast.push(self.expect_top_level()?);
         }

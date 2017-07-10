@@ -1,6 +1,7 @@
 mod token;
 mod parse;
 mod ast;
+mod prepro;
 
 pub use self::token::*;
 pub use self::parse::*;

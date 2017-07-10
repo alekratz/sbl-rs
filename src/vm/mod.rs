@@ -34,6 +34,18 @@ impl Val {
             &Val::Nil => other.is_nil(),
         }
     }
+
+    pub fn type_string(&self) -> &'static str {
+        match self {
+            &Val::Int(_) => "int",
+            &Val::Ident(_) => "identifier",
+            &Val::Char(_) => "char",
+            &Val::String(_) => "string",
+            &Val::Bool(_) => "bool",
+            &Val::Stack(_) => "local stack",
+            &Val::Nil => "nil",
+        }
+    }
 }
 
 impl Display for Val {

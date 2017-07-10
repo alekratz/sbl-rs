@@ -16,6 +16,9 @@ lazy_static! {
             "^" => tos,
             "$" => stack_size,
 
+            "@len" => len_observe,
+            "!len" => len_consume,
+
             "print" => print,
             "println" => println,
         }
@@ -25,7 +28,6 @@ lazy_static! {
 /*
  * Operations
  */
-
 fn plus(state: &mut State) -> Result<()> {
     let lhs = state.pop()?;
     let rhs = state.pop()?;
@@ -89,6 +91,34 @@ fn tos(state: &mut State) -> Result<()> {
 fn stack_size(state: &mut State) -> Result<()> {
     let size = Val::Int(state.stack_size() as i64);
     state.push(size);
+    Ok(())
+}
+
+/*
+ * Local stack functions
+ */
+
+fn len_observe(state: &mut State) -> Result<()> {
+    let len = {
+        let p = state.peek()?;
+        if !p.is_stack() {
+            return Err(format!("expected TOS item to be stack; instead got {}", p.type_string()).into());
+        }
+        p.stack().len()
+    };
+    state.push(Val::Int(len as i64));
+    Ok(())
+}
+
+fn len_consume(state: &mut State) -> Result<()> {
+    let len = {
+        let p = state.pop()?;
+        if !p.is_stack() {
+            return Err(format!("expected TOS item to be stack; instead got {}", p.type_string()).into());
+        }
+        p.stack().len()
+    };
+    state.push(Val::Int(len as i64));
     Ok(())
 }
 

@@ -16,8 +16,6 @@ impl AppendNode for Tokens {
     }
 }
 
-pub type AST = Vec<TopLevel>;
-
 pub trait ASTNode {
     fn lookaheads() -> &'static [TokenType];
     fn tokens(&self) -> &[RcToken];
@@ -458,7 +456,7 @@ block_stmt!(LoopStmt
 // Top level statements
 //
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(EnumGetters, Clone, PartialEq, Debug)]
 pub enum TopLevel {
     FunDef(FunDef),
     Import(Import),
@@ -518,7 +516,7 @@ impl Debug for FunDef {
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Import {
     tokens: Tokens,
-    path: String,
+    pub(in syntax) path: String,
 }
 
 impl Import {
@@ -556,3 +554,20 @@ impl Debug for Import {
         write!(f, "Import {{ path: {:?} }}", self.path)
     }
 }
+
+pub type TopLevelList = Vec<TopLevel>;
+pub type FunDefList = Vec<FunDef>;
+
+/// An unprocessed AST.
+pub struct AST {
+    pub ast: TopLevelList,
+    pub path: String,
+}
+
+/// A pre-processed AST, ready to be compiled.
+pub struct FilledAST {
+    pub ast: FunDefList,
+    pub path: String,
+}
+
+

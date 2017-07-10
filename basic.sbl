@@ -1,0 +1,20 @@
+# Repeats the top item of the stack N times.
+# Args (top to bottom):
+# N: the number of times to duplicate it
+# X: the item to duplicate
+rep {
+    .n .x n;
+    loop {
+       1 - .n x n;
+    }
+    .n;
+}
+
+# Finds -N
+ng {
+    .x 0 x -;
+}
+
+u- {
+    .x 0 x -;
+}

@@ -1,10 +1,16 @@
+use errors::*;
+use syntax::{AST, FilledAST, Tokenizer, Parser};
+use error_chain::ChainedError;
 use std::rc::Rc;
 use std::fmt::{Formatter, Debug, Display, self};
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::io::{Read, self};
 
 pub type RcStr = Rc<String>;
+
+/// Identity function.
+pub fn id<T>(x: T) -> T { x }
 
 macro_rules! printerr {
     ($arg:expr $(, $tail:expr)*) => {
@@ -12,6 +18,17 @@ macro_rules! printerr {
         let mut stderr = io::stderr();
         writeln!(stderr, $arg $(, $tail)*).unwrap();
     };
+}
+
+pub fn search_path<P: AsRef<Path>, Q: AsRef<Path>>(filename: P, search_dirs: &[Q]) -> Option<PathBuf> {
+    for p in search_dirs {
+        let mut path_buf = PathBuf::from(p.as_ref());
+        path_buf.push(&filename);
+        if path_buf.as_path().is_file() {
+            return Some(path_buf);
+        }
+    }
+    None
 }
 
 /// Reads a file from the given path.
@@ -23,6 +40,30 @@ pub fn read_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
     }
     Ok(source_text)
 }
+
+/// Processes the contents of a file to a filled AST.
+pub fn process_source_path<P: AsRef<Path>, Q: AsRef<Path>>(path: P, search_dirs: &[Q]) -> Result<FilledAST> {
+    let contents = match read_file(&path) {
+        Ok(c) => c,
+        Err(e) => {
+            return Err(format!("error reading `{}`: {}", path.as_ref().display(), e).into());
+        }
+    };
+    // set up tokenizer and parser
+    let tokenizer = Tokenizer::new(path.as_ref().to_str().unwrap(), &contents);
+    let mut parser = Parser::new(tokenizer);
+    let ast = AST { ast: parser.parse()?, path: path.as_ref().display().to_string() };
+    ast.preprocess(search_dirs)
+}
+
+pub fn print_error_chain<T: ChainedError>(err_chain: T) {
+    printerr!("{}", err_chain.iter().nth(0).unwrap());
+    for err in err_chain.iter().skip(1) {
+        printerr!("... {}", err);
+    }
+}
+
+
 
 /*
  * Positions
@@ -126,6 +167,11 @@ impl Range {
         assert!(start >= 0);
         assert!(start <= end);
         &self.start.source_text.as_str()[start as usize..end as usize]
+    }
+
+    pub fn source_path(&self) -> RcStr {
+        self.start.source_path
+            .clone()
     }
 }
 

@@ -8,12 +8,12 @@ use std::rc::Rc;
 type BoringTable = HashMap<String, Option<Rc<Fun>>>;
 
 pub struct Compiler<'ast> {
-    ast: &'ast AST,
+    ast: &'ast FilledAST,
     fun_table: BoringTable,
 }
 
 impl<'ast> Compiler<'ast> {
-    pub fn new(ast: &'ast AST) -> Self {
+    pub fn new(ast: &'ast FilledAST) -> Self {
         // TODO : builtins
         Compiler { ast, fun_table: BoringTable::new() }
     }
@@ -22,38 +22,28 @@ impl<'ast> Compiler<'ast> {
     /// error.
     pub fn compile(mut self) -> Result<FunTable> {
         self.fill_boring_table();
-        for top_level in self.ast {
-            if let &TopLevel::FunDef(ref fun) = top_level {
-                let fun_name = fun.name()
-                    .to_string();
-                {
-                    let fun_entry = self.fun_table.get(&fun_name)
-                        .expect("got function with name that was not filled out");
-                    if fun_entry.is_some() {
-                        return Err(format!("function already exists: `{}`", &fun_name).into());
-                    }
+        for fun in &self.ast.ast {
+            let fun_name = fun.name()
+                .to_string();
+            {
+                let fun_entry = self.fun_table.get(&fun_name)
+                    .expect("got function with name that was not filled out");
+                if fun_entry.is_some() {
+                    return Err(format!("function already exists: `{}`", &fun_name).into());
                 }
-                let mut block = self.compile_block(fun.block(), 0)?;
-                block.push(Bc::ret(fun.tokens().into()));
-                let built_fun = Fun::new(fun_name, block, fun.tokens().into());
+            }
+            let mut block = self.compile_block(fun.block(), 0)?;
+            block.push(Bc::ret(fun.tokens().into()));
+            let built_fun = Fun::new(fun_name, block, fun.tokens().into());
 
-                self.fun_table.insert(built_fun.name().into(), Some(Rc::new(built_fun)));
-            }
-            else {
-                println!("skipping unprocessed `import` statement");
-            }
+            self.fun_table.insert(built_fun.name().into(), Some(Rc::new(built_fun)));
         }
         Ok(self.fun_table.into_iter().map(|(k, v)| (k, v.unwrap())).collect())
     }
 
     fn fill_boring_table(&mut self) {
-        for top_level in self.ast {
-            if let &TopLevel::FunDef(ref fun) = top_level {
-                self.fun_table.insert(fun.name().to_string(), None);
-            }
-            else {
-                println!("skipping unprocessed `import` statement");
-            }
+        for fun in &self.ast.ast {
+            self.fun_table.insert(fun.name().to_string(), None);
         }
     }
 

@@ -68,11 +68,11 @@ test-stacks {
     [a b] .c [c 555 [1 2 3]] println;
 
     [1 2 3 4 5]
-    len 0 >; 
+    @len 0 >; 
     loop {
         .@;
         pop println;
-        len 0 >;
+        @len 0 >;
     }
     .2; # clean up the stack
     "I'm going to spell a word!" println;
@@ -90,7 +90,7 @@ test-stacks {
     loop {
         .@;
         pop print;
-        len 0 >;
+        @len 0 >;
     }
     .2 "" println;
 
@@ -99,7 +99,7 @@ test-stacks {
     loop {
         .@;  # discard boolean
         pop print;  # pop the top item off the local stack, and print it
-        len 0 >;  # compare the length
+        @len 0 >;  # compare the length
     }
     .2 "" println;  # discard the boolean and empty stack and print a newline
 
@@ -120,7 +120,7 @@ test-stacks {
             pop print
         .@;
         "" println;
-        len 0 >;
+        @len 0 >;
     }
     .2;
 }
