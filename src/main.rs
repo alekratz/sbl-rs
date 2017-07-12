@@ -18,12 +18,19 @@ mod common;
 
 mod errors {
     use common::*;
+
     error_chain! {
         errors {
-            Parser(range: Range) {
-                description("Parse error")
-                display("parse error in {}", range)
+            Ranged(range: Range) {
+                description("Ranged error")
+                display("in {}", range)
             }
+        }
+    }
+    
+    impl From<Range> for ErrorKind {
+        fn from(r: Range) -> ErrorKind {
+            ErrorKind::Ranged(r)
         }
     }
 }

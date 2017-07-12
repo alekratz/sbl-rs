@@ -32,7 +32,7 @@ impl<'c> Parser<'c> {
                 let curr_range = self.curr.as_ref()
                     .map(Token::range)
                     .unwrap_or(Range::eof(tokenizer.source_path(), tokenizer.source_text()));
-                top_level.chain_err(|| ErrorKind::Parser(curr_range))?;
+                top_level.chain_err(|| curr_range)?;
             }
             else {
                 ast.push(self.expect_top_level().unwrap());

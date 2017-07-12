@@ -57,9 +57,22 @@ pub fn process_source_path<P: AsRef<Path>, Q: AsRef<Path>>(path: P, search_dirs:
 }
 
 pub fn print_error_chain<T: ChainedError>(err_chain: T) {
+    use std::mem;
     printerr!("{}", err_chain.iter().nth(0).unwrap());
     for err in err_chain.iter().skip(1) {
         printerr!("... {}", err);
+    }
+    
+    let ranges = err_chain.iter()
+        // XXX : ugly hack to mark ranged errors
+        // see https://github.com/rust-lang/rust/issues/35943 for details
+        .map(|e| unsafe { mem::transmute::<&::std::error::Error, &(::std::error::Error+'static)>(e) })
+        .filter_map(|e| e.downcast_ref::<Error>())
+        .collect::<Vec<_>>();
+    for err in ranges {
+        if let &Error(ErrorKind::Ranged(ref r), _) = err {
+            printerr!("error for range {} here", r);
+        }
     }
 }
 
