@@ -25,9 +25,11 @@ use std::env;
 use std::path::Path;
 
 fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(path: P, search_dirs: &[Q]) -> Result<()> {
-    let filled_ast = process_source_path(path, search_dirs)?;
+    let filled_ast = process_source_path(path, search_dirs)
+        .chain_err(|| "Parse error")?;
     let compiler = Compiler::new(&filled_ast);
-    let fun_table = compiler.compile()?;
+    let fun_table = compiler.compile()
+        .chain_err(|| "Compile error")?;
     let mut vm = VM::new(fun_table);
     vm.run()
 }
@@ -44,7 +46,7 @@ fn main() {
     let path = matches.value_of("INPUT")
         .unwrap();
 
-    let mut search_dirs = match env::var("SBL_PATH") {
+    let search_dirs = match env::var("SBL_PATH") {
         Ok(p) => env::split_paths(&format!(".:{}", p))
             .collect::<Vec<_>>(),
         _ => vec![],

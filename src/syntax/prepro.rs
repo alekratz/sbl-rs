@@ -32,7 +32,7 @@ impl AST {
 
     pub fn preprocess<P: AsRef<Path>>(self, search_dirs: &[P]) -> Result<FilledAST> {
         let AST { ast, path } = self;
-        let (mut ast, errors) = ast.into_iter()
+        let (ast, errors) = ast.into_iter()
             .map(|top| {
                 match top {
                     TopLevel::FunDef(f) => Ok(vec![f]),

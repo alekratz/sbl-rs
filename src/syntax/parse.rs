@@ -24,7 +24,8 @@ impl<'c> Parser<'c> {
     pub fn parse(&mut self) -> Result<TopLevelList> {
         let mut ast = TopLevelList::new();
         while !self.is_end() {
-            ast.push(self.expect_top_level()?);
+            ast.push(self.expect_top_level()
+                         .chain_err(|| format!("in {}", self.curr.as_ref().unwrap().range()))?);
         }
         Ok(ast)
     }
