@@ -5,14 +5,22 @@ use std::fmt::{Formatter, Debug, self};
 
 pub type Tokens = Vec<RcToken>;
 
-/// A trait which appends a node's tokens to a Vec.
-pub trait AppendNode {
+/// A trait which provides special functions for `Tokens`, aka `Vec<RcToken>`.
+pub trait TokensVec {
     fn append_node<T: ASTNode>(&mut self, node: &T);
+    fn range(&self) -> Range;
 }
 
-impl AppendNode for Tokens {
+impl TokensVec for Tokens {
     fn append_node<T: ASTNode>(&mut self, node: &T) {
         self.extend_from_slice(node.tokens());
+    }
+
+    fn range(&self) -> Range {
+        assert!(!self.is_empty());
+        let first = self.first().unwrap().range();
+        let last = self.last().unwrap().range();
+        Range::new(first.start, last.end)
     }
 }
 

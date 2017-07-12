@@ -2,6 +2,7 @@ use common::*;
 use errors::*;
 use std::str::Chars;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::marker::PhantomData;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, self};
@@ -185,20 +186,24 @@ pub struct Tokenizer<'c> {
     next_range: Range,
     source_chars: Chars<'c>,
     phantom_lifetime: PhantomData<&'c str>,
+    source_path: RcStr,
+    source_text: RcStr,
 }
 
 impl<'c> Tokenizer<'c> {
     pub fn new(source_path: &str, source_text: &'c str) -> Self {
-        let rc_text = Rc::new(source_text.to_string());
-        let rc_path = Rc::new(source_path.to_string());
+        let rc_text = Arc::new(source_text.to_string());
+        let rc_path = Arc::new(source_path.to_string());
 
         let mut t = Tokenizer {
             curr_range: Range::new_curr(rc_path.clone(), rc_text.clone()),
-            next_range: Range::new_next(rc_path, rc_text),
+            next_range: Range::new_next(rc_path.clone(), rc_text.clone()),
             curr: None,
             next: None,
             source_chars: source_text.chars(),
             phantom_lifetime: PhantomData,
+            source_path: rc_path,
+            source_text: rc_text,
         };
         t.next_char();
         t.next_char();  // start it at the current character
@@ -421,6 +426,14 @@ impl<'c> Tokenizer<'c> {
     /// Convenience function to make new tokens
     fn ok_token(&mut self, token_type: TokenType) -> Result<Token> {
         Ok(Token::new(token_type, self.curr_range.clone()))
+    }
+
+    pub fn source_path(&self) -> RcStr {
+        self.source_path.clone()
+    }
+
+    pub fn source_text(&self) -> RcStr {
+        self.source_text.clone()
     }
 }
 

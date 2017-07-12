@@ -1,6 +1,6 @@
 # Example program
 # factorial
-import "basic.sbl";
+import "basic.sbl"
 
 fact {
     # duplicate and compare to zero

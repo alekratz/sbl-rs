@@ -15,7 +15,18 @@ mod syntax;
 mod vm;
 #[macro_use]
 mod common;
-mod errors { error_chain!{} }
+
+mod errors {
+    use common::*;
+    error_chain! {
+        errors {
+            Parser(range: Range) {
+                description("Parse error")
+                display("parse error in {}", range)
+            }
+        }
+    }
+}
 
 use common::*;
 use errors::*;

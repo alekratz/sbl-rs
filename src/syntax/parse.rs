@@ -1,4 +1,5 @@
 use errors::*;
+use common::*;
 use syntax::token::*;
 use syntax::ast::*;
 
@@ -24,8 +25,18 @@ impl<'c> Parser<'c> {
     pub fn parse(&mut self) -> Result<TopLevelList> {
         let mut ast = TopLevelList::new();
         while !self.is_end() {
-            ast.push(self.expect_top_level()
-                         .chain_err(|| format!("in {}", self.curr.as_ref().unwrap().range()))?);
+            let top_level = self.expect_top_level();
+            if top_level.is_err() {
+                // get the range of the most recent token
+                let ref tokenizer = self.tokenizer;
+                let curr_range = self.curr.as_ref()
+                    .map(Token::range)
+                    .unwrap_or(Range::eof(tokenizer.source_path(), tokenizer.source_text()));
+                top_level.chain_err(|| ErrorKind::Parser(curr_range))?;
+            }
+            else {
+                ast.push(self.expect_top_level().unwrap());
+            }
         }
         Ok(ast)
     }

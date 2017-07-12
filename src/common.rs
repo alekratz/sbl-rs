@@ -1,13 +1,13 @@
 use errors::*;
 use syntax::{AST, FilledAST, Tokenizer, Parser};
 use error_chain::ChainedError;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::fmt::{Formatter, Debug, Display, self};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::io::{Read, self};
 
-pub type RcStr = Rc<String>;
+pub type RcStr = Arc<String>;
 
 /// Identity function.
 pub fn id<T>(x: T) -> T { x }
@@ -99,6 +99,16 @@ impl Pos {
         }
     }
 
+    pub fn eof(source_path: RcStr, source_text: RcStr) -> Self {
+        Pos {
+            src_index: ::std::isize::MIN,
+            line_index: ::std::isize::MIN,
+            col_index: ::std::isize::MIN,
+            source_path,
+            source_text,
+        }
+    }
+
     /// Advances the source and column index by one.
     pub fn adv(&mut self) {
         self.src_index += 1;
@@ -146,6 +156,17 @@ impl Range {
         }
     }
 
+    pub fn new(start: Pos, end: Pos) -> Self {
+        Range { start, end }
+    }
+
+    pub fn eof(path: RcStr, text: RcStr) -> Self {
+        Range {
+            start: Pos::eof(path.clone(), text.clone()),
+            end: Pos::eof(path, text),
+        }
+    }
+
     /// Advances the `end` position by one.
     pub fn adv(&mut self) {
         self.end.adv();
@@ -178,13 +199,13 @@ impl Range {
 impl Display for Range {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         if self.start == self.end {
-            write!(f, "{} at {}", self.start.source_path, self.start)
+            write!(f, "`{}` at {}", self.start.source_path, self.start)
         }
         else if self.start.line_index == self.end.line_index {
-            write!(f, "{} at {}-{}", self.start.source_path, self.start, self.end.col_index + 1)
+            write!(f, "`{}` at {}-{}", self.start.source_path, self.start, self.end.col_index + 1)
         }
         else {
-            write!(f, "{} at {}-{}", self.start.source_path, self.start, self.end)
+            write!(f, "`{}` at {}-{}", self.start.source_path, self.start, self.end)
         }
     }
 }
