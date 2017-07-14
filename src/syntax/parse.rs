@@ -143,7 +143,11 @@ impl<'c> Parser<'c> {
         let str_token = self.match_token(TokenType::String)?;
         let path = str_token.unescape();
         tokens.push(str_token.into_rc());
-        tokens.push(self.match_token(TokenType::Semi)?.into_rc());
+        let token_range = tokens.range()
+            .clone();
+        tokens.push(self.match_token(TokenType::Semi)
+                    .chain_err(|| token_range)
+                    .chain_err(|| "while parsing import statement")?.into_rc());
         Ok(Import::new(tokens, path))
     }
 

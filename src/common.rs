@@ -6,6 +6,7 @@ use std::fmt::{Formatter, Debug, Display, self};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::io::{Read, self};
+use std::cmp::Ordering;
 
 pub type RcStr = Arc<String>;
 
@@ -69,19 +70,17 @@ pub fn print_error_chain<T: ChainedError>(err_chain: T) {
         printerr!("... {}", err);
     }
     
-    let ranges = err_chain.iter()
+    let mut ranges = err_chain.iter()
         // XXX : ugly hack to mark ranged errors
         // see https://github.com/rust-lang/rust/issues/35943 for details
         .map(|e| unsafe { mem::transmute::<&::std::error::Error, &(::std::error::Error+'static)>(e) })
         .filter_map(|e| e.downcast_ref::<Error>())
+        .filter_map(|e| if let &Error(ErrorKind::Ranged(ref r), _) = e { Some(r.clone()) } else { None })
         .collect::<Vec<_>>();
+    ranges.sort_by(|a, b| a.start.cmp(&b.start));
+    let range = Range::new(ranges.first().unwrap().start.clone(), ranges.last().unwrap().end.clone());
     printerr!();
-    for err in ranges {
-        if let &Error(ErrorKind::Ranged(ref r), _) = err {
-            print_range_underline(r.clone());
-            //printerr!("error for range {} here", r);
-        }
-    }
+    print_range_underline(range);
 }
 
 /// Prints an underlined range.
@@ -109,7 +108,6 @@ pub fn print_range_underline(range: Range) {
     else { "" };
     // for now, we're just underlining the first line
     printerr!("    {}:", range);
-    printerr!();
     // strip the initial whitespace, and indent by 4 plus the line number
     printerr!("{0}{2: >1$}{3}{4}{5}",
               ".".repeat(DOTS_LEN),
@@ -151,7 +149,7 @@ pub fn print_range_underline(range: Range) {
  * Positions
  */
 
-#[derive(PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Pos {
     pub src_index: isize,
     pub line_index: isize,
@@ -202,6 +200,14 @@ impl Pos {
         self.line_index += 1;
         self.col_index = 0;
     }
+}
+
+impl PartialOrd for Pos {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { self.src_index.partial_cmp(&other.src_index) }
+}
+
+impl Ord for Pos {
+    fn cmp(&self, other: &Self) -> Ordering { self.src_index.cmp(&other.src_index) }
 }
 
 impl Display for Pos {
