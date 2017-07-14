@@ -50,7 +50,7 @@ impl<'c> Parser<'c> {
             Ok(curr)
         }
         else {
-            Err(format!("expected token type `{}`; instead got `{}`", token_type, curr.token_type()).into())
+            Err(format!("expected token type `{}`; got `{}` instead", token_type, curr.token_type()).into())
         }
     }
 
@@ -71,7 +71,7 @@ impl<'c> Parser<'c> {
                 .map(|t| format!("`{}`", t))
                 .collect::<Vec<_>>()
                 .join(", ");
-            Err(format!("expected any token of {}; instead got `{}`", expected_types, curr.token_type()).into())
+            Err(format!("expected any token of {}; got `{}` instead", expected_types, curr.token_type()).into())
         }
     }
 
