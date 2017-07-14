@@ -154,7 +154,8 @@ impl<'c> Parser<'c> {
     fn expect_fun(&mut self) -> Result<FunDef> {
         let mut tokens = vec![self.match_any(FunDef::lookaheads())?.into_rc()];
         let name = tokens[0].as_str().to_string();
-        let block = self.expect_block()?;
+        let block = self.expect_block()
+            .chain_err(|| format!("while parsing function `{}`", name))?;
         tokens.append_node(&block);
         Ok(FunDef::new(tokens, name, block))
     }
@@ -221,7 +222,13 @@ impl<'c> Parser<'c> {
         let mut tokens = vec![];
         let mut actions = vec![];
         while !self.can_match_token(TokenType::Semi) && self.curr.is_some() {
-            let action = self.expect_stack_action()?;
+            let action = if tokens.len() > 0 {
+                self.expect_stack_action()
+                    .chain_err(|| tokens.range())
+            }
+            else {
+                self.expect_stack_action()
+            }?;
             tokens.append_node(&action);
             actions.push(action);
         }
@@ -234,7 +241,7 @@ impl<'c> Parser<'c> {
             Ok(StackAction::Push(item))
         }
         else {
-            let mut tokens = vec![self.match_token(TokenType::Dot)?.into_rc()];
+            let mut tokens = vec![self.match_any(StackAction::lookaheads())?.into_rc()];
             let item = self.expect_item()?;
             tokens.append_node(&item);
             Ok(StackAction::Pop(tokens, item))
