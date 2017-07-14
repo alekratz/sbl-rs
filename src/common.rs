@@ -13,11 +13,17 @@ pub type RcStr = Arc<String>;
 pub fn id<T>(x: T) -> T { x }
 
 macro_rules! printerr {
-    ($arg:expr $(, $tail:expr)*) => {
+    () => {{ printerr!(""); }};
+    ($arg:expr) => {{
         use std::io::{self, Write};
         let mut stderr = io::stderr();
-        writeln!(stderr, $arg $(, $tail)*).unwrap();
-    };
+        writeln!(stderr, $arg).unwrap();
+    }};
+    ($arg:expr, $($args:expr),+) => {{
+        use std::io::{self, Write};
+        let mut stderr = io::stderr();
+        writeln!(stderr, $arg, $($args),+).unwrap();
+    }};
 }
 
 pub fn search_path<P: AsRef<Path>, Q: AsRef<Path>>(filename: P, search_dirs: &[Q]) -> Option<PathBuf> {
@@ -69,14 +75,77 @@ pub fn print_error_chain<T: ChainedError>(err_chain: T) {
         .map(|e| unsafe { mem::transmute::<&::std::error::Error, &(::std::error::Error+'static)>(e) })
         .filter_map(|e| e.downcast_ref::<Error>())
         .collect::<Vec<_>>();
+    printerr!();
     for err in ranges {
         if let &Error(ErrorKind::Ranged(ref r), _) = err {
-            printerr!("error for range {} here", r);
+            print_range_underline(r.clone());
+            //printerr!("error for range {} here", r);
         }
     }
 }
 
+/// Prints an underlined range.
+pub fn print_range_underline(range: Range) {
+    const INDENT: usize = 4;
+    const MAX_LEN: usize = 72;
+    const LINE_NUMBER_WIDTH: usize = 4;
+    const DOTS_LEN: usize = 12;
 
+    let source_text = range.source_text();
+    let lines = source_text.split('\n')
+        .collect::<Vec<_>>();
+    assert!(range.start.line_index < lines.len() as isize);
+    assert!(range.end.line_index < lines.len() as isize);
+
+    let line_index = range.start.line_index as usize;
+    let line = lines[line_index]
+        .trim()
+        .chars()
+        .take(MAX_LEN)
+        .collect::<String>();
+    let elipses = if lines[line_index].len() > MAX_LEN {
+        "..."
+    }
+    else { "" };
+    // for now, we're just underlining the first line
+    printerr!("    {}:", range);
+    printerr!();
+    // strip the initial whitespace, and indent by 4 plus the line number
+    printerr!("{0}{2: >1$}{3}{4}{5}",
+              ".".repeat(DOTS_LEN),
+              LINE_NUMBER_WIDTH,
+              line_index + 1,
+              " ".repeat(INDENT),
+              line,
+              elipses);
+    // figure out where to start and end. if we're on the same line, just use the
+    // start and end of the range. if we're on different lines, start at the start
+    // and end at the end of the line.
+    let line_offset = lines[line_index]
+        .find(|c: char| c != ' ' && c != '\t')
+        .unwrap_or(0);
+    let start = range.start.col_index
+            - line_offset as isize
+            + DOTS_LEN as isize
+            + LINE_NUMBER_WIDTH as isize
+            + INDENT as isize;
+    let end = if range.start.line_index == range.end.line_index {
+        range.end.col_index as isize
+            - line_offset as isize
+            + DOTS_LEN as isize
+            + LINE_NUMBER_WIDTH as isize
+            + INDENT as isize
+    }
+    else {
+        line.len() as isize
+            - line_offset as isize
+            + DOTS_LEN as isize
+            + LINE_NUMBER_WIDTH as isize
+            + INDENT as isize
+    };
+
+    printerr!("{}{}", " ".repeat(start as usize), "^".repeat((end - start) as usize));
+}
 
 /*
  * Positions
@@ -205,6 +274,11 @@ impl Range {
 
     pub fn source_path(&self) -> RcStr {
         self.start.source_path
+            .clone()
+    }
+
+    pub fn source_text(&self) -> RcStr {
+        self.start.source_text
             .clone()
     }
 }
