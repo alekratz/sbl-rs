@@ -77,10 +77,12 @@ pub fn print_error_chain<T: ChainedError>(err_chain: T) {
         .filter_map(|e| e.downcast_ref::<Error>())
         .filter_map(|e| if let &Error(ErrorKind::Ranged(ref r), _) = e { Some(r.clone()) } else { None })
         .collect::<Vec<_>>();
-    ranges.sort_by(|a, b| a.start.cmp(&b.start));
-    let range = Range::new(ranges.first().unwrap().start.clone(), ranges.last().unwrap().end.clone());
-    printerr!();
-    print_range_underline(range);
+    if !ranges.is_empty() {
+        ranges.sort_by(|a, b| a.start.cmp(&b.start));
+        let range = Range::new(ranges.first().unwrap().start.clone(), ranges.last().unwrap().end.clone());
+        printerr!();
+        print_range_underline(range);
+    }
 }
 
 /// Prints an underlined range.
