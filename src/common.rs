@@ -85,20 +85,34 @@ pub fn print_error_chain<T: ChainedError>(err_chain: T) {
 
 /// Prints an underlined range.
 pub fn print_range_underline(range: Range) {
+    const MAX_LINES: usize = 4;
     let source_text = range.source_text();
     let lines = source_text.split('\n')
         .collect::<Vec<_>>();
     assert!(range.start.line_index < lines.len() as isize);
     assert!(range.end.line_index < lines.len() as isize);
     printerr!("    {}:", range);
-    if range.start.line_index == range.end.line_index {
-        let line_index = range.start.line_index as usize;
-        print_error_line(lines[line_index], line_index as isize,
+    let start_index = range.start.line_index as usize;
+    let end_index = range.end.line_index as usize;
+    if start_index == end_index {
+        print_error_line(lines[start_index], start_index as isize,
                          range.start.col_index, range.end.col_index);
     }
+    else if (end_index - start_index) > MAX_LINES {
+        print_error_line(lines[start_index], start_index as isize,
+                         range.start.col_index, lines[start_index].len() as isize);
+
+        for idx in start_index + 1 .. start_index + (MAX_LINES / 2) {
+            print_error_line(lines[idx], idx as isize, 0, lines[idx as usize].len() as isize);
+        }
+
+        printerr!("<{} lines omitted>", end_index - start_index - MAX_LINES);
+
+        for idx in end_index - (MAX_LINES / 2) + 1 .. end_index + 1 {
+            print_error_line(lines[idx], idx as isize, 0, lines[idx as usize].len() as isize);
+        }
+    }
     else {
-        // TODO : looooooooong snippets of code should be cut down in the middle
-        let start_index = range.start.line_index as usize;
         print_error_line(lines[start_index], start_index as isize,
                          range.start.col_index, lines[start_index].len() as isize);
         for idx in range.start.line_index + 1 .. range.end.line_index + 1 {
@@ -110,10 +124,9 @@ pub fn print_range_underline(range: Range) {
 /// Takes an *unstripped* line, and prints it with an underline between the
 /// given start and end indices.
 fn print_error_line(line: &str, line_index: isize, start: isize, end: isize) {
-    const INDENT: usize = 4;
+    const INDENT: usize = 8;
     const MAX_LEN: usize = 72;
     const LINE_NUMBER_WIDTH: usize = 4;
-    const DOTS_LEN: usize = 12;
     let elipses = if line.len() > MAX_LEN {
         "..."
     }
@@ -126,8 +139,7 @@ fn print_error_line(line: &str, line_index: isize, start: isize, end: isize) {
         .collect::<String>(); 
     // for now, we're just underlining the first line
     // strip the initial whitespace, and indent by 4 plus the line number
-    printerr!("{0}{2: >1$}{3}{4}{5}",
-              ".".repeat(DOTS_LEN),
+    printerr!("{1: >0$}{2}{3}{4}",
               LINE_NUMBER_WIDTH,
               line_index + 1,
               " ".repeat(INDENT),
@@ -136,6 +148,8 @@ fn print_error_line(line: &str, line_index: isize, start: isize, end: isize) {
     // figure out where to start and end. if we're on the same line, just use the
     // start and end of the range. if we're on different lines, start at the start
     // and end at the end of the line. 
+    let len = end - start;
+    /*
     let start = start
             - line_offset as isize
             + DOTS_LEN as isize
@@ -146,10 +160,9 @@ fn print_error_line(line: &str, line_index: isize, start: isize, end: isize) {
             + DOTS_LEN as isize
             + LINE_NUMBER_WIDTH as isize
             + INDENT as isize;
-    let len = end - start;
+    */
     if len > 0 {
-        printerr!("{}{}{}",
-              ".".repeat(DOTS_LEN),
+        printerr!("{}{}",
               " ".repeat(LINE_NUMBER_WIDTH + INDENT),
               "^".repeat(len as usize));
     }

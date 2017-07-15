@@ -81,7 +81,7 @@ impl Display for TokenType {
 
             // Symbols
             Dot => "dot",
-            Semi => "semi",
+            Semi => "semicolon",
             LBrace => "lbrace",
             RBrace => "rbrace",
             LBrack => "lbrack",
