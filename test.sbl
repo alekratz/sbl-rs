@@ -71,25 +71,25 @@ test-stacks {
     ^len 0 >; 
     loop {
         .@;
-        pop !println;
+        ^pop !println;
         ^len 0 >;
     }
     .2; # clean up the stack
     "I'm going to spell a word!" !println;
     []
-    's push
-    'u push
-    'o push
-    'u push
-    'c push
-    'o push
-    'n push
-    'n push
-    'i push
+    's ^push
+    'u ^push
+    'o ^push
+    'u ^push
+    'c ^push
+    'o ^push
+    'n ^push
+    'n ^push
+    'i ^push
     T;
     loop {
         .@;
-        pop !print;
+        ^pop !print;
         ^len 0 >;
     }
     .2 "" !println;
@@ -100,7 +100,7 @@ test-stacks {
     T;  # initial truth value to start the loop
     loop {
         .@;  # discard boolean
-        pop !print;  # pop the top item off the local stack, and print it
+        ^pop !print;  # pop the top item off the local stack, and print it
         ^len 0 >;  # compare the length
     }
     .2 "" !println;  # discard the boolean and empty stack and print a newline
@@ -116,10 +116,10 @@ test-stacks {
     T;
     loop {
         .@;
-        pop  # get the coordinate
-            pop !print
+        ^pop  # get the coordinate
+            ^pop !print
             ", " !print
-            pop !print
+            ^pop !print
         .@;
         "" !println;
         ^len 0 >;

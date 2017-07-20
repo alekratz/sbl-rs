@@ -8,6 +8,7 @@ type BuiltinFn = fn(&mut State) -> Result<()>;
 lazy_static! {
     pub(in vm) static ref BUILTINS: HashMap<&'static str, BuiltinFn> = {
         hashmap! {
+            // Operations
             "+" => plus as BuiltinFn,  // for some reason this cascades down the list
             "-" => minus,
             "*" => times,
@@ -19,14 +20,17 @@ lazy_static! {
             "<=" => lt_equals,
             ">=" => gt_equals,
 
+            // Stack functions
             "^" => tos,
             "$" => stack_size,
 
-            "push" => push,
-            "pop" => pop,
+            // Local stack functions
+            "^push" => push,
+            "^pop" => pop,
             "^len" => len_observe,
             "!len" => len_consume,
 
+            // Quality of life functions
             "^print" => print_observe,
             "!print" => print_consume,
             "^println" => println_observe,
