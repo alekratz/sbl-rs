@@ -6,10 +6,12 @@ pub use self::compile::*;
 pub use self::vm::*;
 pub(in vm) use self::builtins::*;
 
+use errors::*;
 use syntax::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::fmt::{Formatter, Display, self};
+use std::cmp::Ordering;
 
 #[derive(EnumGetters, EnumIsA, PartialEq, Clone, Debug)]
 pub enum Val {
@@ -44,6 +46,20 @@ impl Val {
             &Val::Bool(_) => "bool",
             &Val::Stack(_) => "local stack",
             &Val::Nil => "nil",
+        }
+    }
+
+    pub fn compare(&self, other: &Val) -> Result<Ordering> {
+        if !self.matches(other) {
+            return Err("attempted to compare a {} value against a {} value".into());
+        }
+
+        match self {
+            &Val::Int(i) => Ok(other.int().cmp(&i)),
+            &Val::Ident(_) | &Val::String(_) | &Val::Bool(_) | &Val::Stack(_) | &Val::Nil =>
+                Err(format!("{} types may not be compared with ordinal operators", self.type_string()).into()),
+            &Val::Char(c) => Ok(other.char().cmp(&c)),
+            _ => unreachable!(),
         }
     }
 }

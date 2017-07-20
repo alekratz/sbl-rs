@@ -1,6 +1,7 @@
 use errors::*;
 use vm::*;
 use std::collections::HashMap;
+use std::cmp::Ordering;
 
 type BuiltinFn = fn(&mut State) -> Result<()>;
 
@@ -12,15 +13,24 @@ lazy_static! {
             "*" => times,
             "/" => divide,
             "==" => equals,
+            "!=" => not_equals,
+            "<" => less_than,
+            ">" => greater_than,
+            "<=" => lt_equals,
+            ">=" => gt_equals,
 
             "^" => tos,
             "$" => stack_size,
 
-            "@len" => len_observe,
+            "push" => push,
+            "pop" => pop,
+            "^len" => len_observe,
             "!len" => len_consume,
 
-            "print" => print,
-            "println" => println,
+            "^print" => print_observe,
+            "!print" => print_consume,
+            "^println" => println_observe,
+            "!println" => println_consume,
         }
     };
 }
@@ -79,6 +89,43 @@ fn equals(state: &mut State) -> Result<()> {
     Ok(())
 }
 
+fn not_equals(state: &mut State) -> Result<()> {
+    let lhs = state.pop()?;
+    let rhs = state.pop()?;
+    state.push(Val::Bool(lhs != rhs));
+    Ok(())
+}
+
+fn less_than(state: &mut State) -> Result<()> {
+    let lhs = state.pop()?;
+    let rhs = state.pop()?;
+    state.push(Val::Bool(lhs.compare(&rhs)? == Ordering::Less));
+    Ok(())
+}
+
+fn greater_than(state: &mut State) -> Result<()> {
+    let lhs = state.pop()?;
+    let rhs = state.pop()?;
+    state.push(Val::Bool(lhs.compare(&rhs)? == Ordering::Greater));
+    Ok(())
+}
+
+fn lt_equals(state: &mut State) -> Result<()> {
+    let lhs = state.pop()?;
+    let rhs = state.pop()?;
+    let cmp = lhs.compare(&rhs)?;
+    state.push(Val::Bool(cmp == Ordering::Less || cmp == Ordering::Equal));
+    Ok(())
+}
+
+fn gt_equals(state: &mut State) -> Result<()> {
+    let lhs = state.pop()?;
+    let rhs = state.pop()?;
+    let cmp = lhs.compare(&rhs)?;
+    state.push(Val::Bool(cmp == Ordering::Greater || cmp == Ordering::Equal));
+    Ok(())
+}
+
 /*
  * Stack access functions
  */
@@ -97,6 +144,39 @@ fn stack_size(state: &mut State) -> Result<()> {
 /*
  * Local stack functions
  */
+
+fn push(state: &mut State) -> Result<()> {
+    let tos = state.pop()?;
+    let mut stack = state.pop()?;
+    if let Val::Stack(ref mut st) = stack {
+        st.push(tos);
+    }
+    else {
+        return Err(format!("expected TOS item to be stack; instead got {}", stack.type_string()).into());
+    }
+
+    state.push(stack);
+    Ok(())
+}
+
+fn pop(state: &mut State) -> Result<()> {
+    let mut stack = state.pop()?;
+    let popped: Val = if let Val::Stack(ref mut st) = stack {
+        if st.len() > 0 {
+            Ok(st.pop().unwrap()) as Result<Val>
+        }
+        else {
+            Err("attempted to pop empty TOS item".into()) as Result<Val>
+        }
+    }
+    else {
+        Err(format!("expected TOS item to be stack; instead got {}", stack.type_string()).into()) as Result<Val>
+    }?;
+
+    state.push(stack);
+    state.push(popped);
+    Ok(())
+}
 
 fn len_observe(state: &mut State) -> Result<()> {
     let len = {
@@ -126,13 +206,25 @@ fn len_consume(state: &mut State) -> Result<()> {
  * QOL functions
  */
 
-fn print(state: &mut State) -> Result<()> {
+fn print_observe(state: &mut State) -> Result<()> {
+    let tos = state.peek()?;
+    print!("{}", tos);
+    Ok(())
+}
+
+fn print_consume(state: &mut State) -> Result<()> {
     let tos = state.pop()?;
     print!("{}", tos);
     Ok(())
 }
 
-fn println(state: &mut State) -> Result<()> {
+fn println_observe(state: &mut State) -> Result<()> {
+    let tos = state.peek()?;
+    println!("{}", tos);
+    Ok(())
+}
+
+fn println_consume(state: &mut State) -> Result<()> {
     let tos = state.pop()?;
     println!("{}", tos);
     Ok(())
