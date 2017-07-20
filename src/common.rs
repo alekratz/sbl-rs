@@ -13,20 +13,6 @@ pub type RcStr = Arc<String>;
 /// Identity function.
 pub fn id<T>(x: T) -> T { x }
 
-macro_rules! printerr {
-    () => {{ printerr!(""); }};
-    ($arg:expr) => {{
-        use std::io::{self, Write};
-        let mut stderr = io::stderr();
-        writeln!(stderr, $arg).unwrap();
-    }};
-    ($arg:expr, $($args:expr),+) => {{
-        use std::io::{self, Write};
-        let mut stderr = io::stderr();
-        writeln!(stderr, $arg, $($args),+).unwrap();
-    }};
-}
-
 pub fn search_path<P: AsRef<Path>, Q: AsRef<Path>>(filename: P, search_dirs: &[Q]) -> Option<PathBuf> {
     for p in search_dirs {
         let mut path_buf = PathBuf::from(p.as_ref());
@@ -65,9 +51,9 @@ pub fn process_source_path<P: AsRef<Path>, Q: AsRef<Path>>(path: P, search_dirs:
 
 pub fn print_error_chain<T: ChainedError>(err_chain: T) {
     use std::mem;
-    printerr!("{}", err_chain.iter().nth(0).unwrap());
+    eprintln!("{}", err_chain.iter().nth(0).unwrap());
     for err in err_chain.iter().skip(1) {
-        printerr!("... {}", err);
+        eprintln!("... {}", err);
     }
     
     let mut ranges = err_chain.iter()
@@ -80,7 +66,7 @@ pub fn print_error_chain<T: ChainedError>(err_chain: T) {
     if !ranges.is_empty() {
         ranges.sort_by(|a, b| a.start.cmp(&b.start));
         let range = Range::new(ranges.first().unwrap().start.clone(), ranges.last().unwrap().end.clone());
-        printerr!();
+        eprintln!();
         print_range_underline(range);
     }
 }
@@ -93,7 +79,7 @@ pub fn print_range_underline(range: Range) {
         .collect::<Vec<_>>();
     assert!(range.start.line_index < lines.len() as isize);
     assert!(range.end.line_index < lines.len() as isize);
-    printerr!("    {}:", range);
+    eprintln!("    {}:", range);
     let start_index = range.start.line_index as usize;
     let end_index = range.end.line_index as usize;
     if start_index == end_index {
@@ -108,7 +94,7 @@ pub fn print_range_underline(range: Range) {
             print_error_line(lines[idx], idx as isize, 0, lines[idx as usize].len() as isize);
         }
 
-        printerr!("<{} lines omitted>", end_index - start_index - MAX_LINES);
+        eprintln!("<{} lines omitted>", end_index - start_index - MAX_LINES);
 
         for idx in end_index - (MAX_LINES / 2) + 1 .. end_index + 1 {
             print_error_line(lines[idx], idx as isize, 0, lines[idx as usize].len() as isize);
@@ -141,7 +127,7 @@ fn print_error_line(line: &str, line_index: isize, start: isize, end: isize) {
         .collect::<String>(); 
     // for now, we're just underlining the first line
     // strip the initial whitespace, and indent by 4 plus the line number
-    printerr!("{1: >0$}{2}{3}{4}",
+    eprintln!("{1: >0$}{2}{3}{4}",
               LINE_NUMBER_WIDTH,
               line_index + 1,
               " ".repeat(INDENT),
@@ -164,7 +150,7 @@ fn print_error_line(line: &str, line_index: isize, start: isize, end: isize) {
             + INDENT as isize;
     */
     if len > 0 {
-        printerr!("{}{}",
+        eprintln!("{}{}",
               " ".repeat(LINE_NUMBER_WIDTH + INDENT),
               "^".repeat(len as usize));
     }
