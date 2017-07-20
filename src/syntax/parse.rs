@@ -35,7 +35,7 @@ impl<'c> Parser<'c> {
                 top_level.chain_err(|| curr_range)?;
             }
             else {
-                ast.push(self.expect_top_level().unwrap());
+                ast.push(top_level.unwrap())
             }
         }
         Ok(ast)
