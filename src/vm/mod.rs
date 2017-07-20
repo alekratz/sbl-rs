@@ -59,7 +59,6 @@ impl Val {
             &Val::Ident(_) | &Val::String(_) | &Val::Bool(_) | &Val::Stack(_) | &Val::Nil =>
                 Err(format!("{} types may not be compared with ordinal operators", self.type_string()).into()),
             &Val::Char(c) => Ok(other.char().cmp(&c)),
-            _ => unreachable!(),
         }
     }
 }

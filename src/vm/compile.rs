@@ -98,7 +98,7 @@ impl<'ast> Compiler<'ast> {
         for action in stmt.stack_actions() {
             match action {
                 &StackAction::Push(ref i) => body.append(&mut self.compile_item_push(i)?),
-                &StackAction::Pop(ref t, ref i) => {
+                &StackAction::Pop(_, ref i) => {
                     if matches!(i.item_type(), &ItemType::Int(_)) {
                         body.push(Bc::popn(action.tokens().into(), i.into()))
                     }

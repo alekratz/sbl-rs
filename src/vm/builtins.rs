@@ -27,14 +27,14 @@ lazy_static! {
             // Local stack functions
             "^push" => push,
             "^pop" => pop,
-            "^len" => len_observe,
-            "!len" => len_consume,
+            "^len" => len_o,
+            "!len" => len_c,
 
             // Quality of life functions
-            "^print" => print_observe,
-            "!print" => print_consume,
-            "^println" => println_observe,
-            "!println" => println_consume,
+            "^print" => print_o,
+            "!print" => print_c,
+            "^println" => println_o,
+            "!println" => println_c,
         }
     };
 }
@@ -182,7 +182,7 @@ fn pop(state: &mut State) -> Result<()> {
     Ok(())
 }
 
-fn len_observe(state: &mut State) -> Result<()> {
+fn len_o(state: &mut State) -> Result<()> {
     let len = {
         let p = state.peek()?;
         if !p.is_stack() {
@@ -194,7 +194,7 @@ fn len_observe(state: &mut State) -> Result<()> {
     Ok(())
 }
 
-fn len_consume(state: &mut State) -> Result<()> {
+fn len_c(state: &mut State) -> Result<()> {
     let len = {
         let p = state.pop()?;
         if !p.is_stack() {
@@ -210,25 +210,25 @@ fn len_consume(state: &mut State) -> Result<()> {
  * QOL functions
  */
 
-fn print_observe(state: &mut State) -> Result<()> {
+fn print_o(state: &mut State) -> Result<()> {
     let tos = state.peek()?;
     print!("{}", tos);
     Ok(())
 }
 
-fn print_consume(state: &mut State) -> Result<()> {
+fn print_c(state: &mut State) -> Result<()> {
     let tos = state.pop()?;
     print!("{}", tos);
     Ok(())
 }
 
-fn println_observe(state: &mut State) -> Result<()> {
+fn println_o(state: &mut State) -> Result<()> {
     let tos = state.peek()?;
     println!("{}", tos);
     Ok(())
 }
 
-fn println_consume(state: &mut State) -> Result<()> {
+fn println_c(state: &mut State) -> Result<()> {
     let tos = state.pop()?;
     println!("{}", tos);
     Ok(())
