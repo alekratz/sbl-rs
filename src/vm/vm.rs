@@ -151,7 +151,7 @@ impl VM {
     }
 
     pub fn run(&mut self) -> Result<()> {
-        for ref f in self.foreign_funs {
+        for f in &self.foreign_funs {
             f.load(&mut self.state.borrow_mut());
         }
         self.invoke("main")
