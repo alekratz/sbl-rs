@@ -92,8 +92,8 @@ impl From<Item> for ItemType {
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Item {
-    tokens: Tokens,
-    item_type: ItemType,
+    pub tokens: Tokens,
+    pub item_type: ItemType,
 }
 
 impl Item {
@@ -101,14 +101,10 @@ impl Item {
         Item { tokens, item_type, }
     }
 
-    pub fn item_type(&self) -> &ItemType {
-        &self.item_type
-    }
-
     pub fn is_const(&self) -> bool {
-        match self.item_type() {
-            &ItemType::Ident(_) => false,
-            &ItemType::Stack(ref s) => s.iter().all(Item::is_const),
+        match self.item_type {
+            ItemType::Ident(_) => false,
+            ItemType::Stack(ref s) => s.iter().all(Item::is_const),
             _ => true,
         }
     }
@@ -169,7 +165,7 @@ impl From<Token> for Item {
 // Stack actions
 //
 
-#[derive(Clone)]
+#[derive(Clone, EnumIsA)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub enum StackAction {
     Push(Item),
@@ -182,20 +178,6 @@ impl StackAction {
             &StackAction::Push(ref i) => i,
             &StackAction::Pop(_, ref i) => i,
         }
-    }
-
-    #[cfg(test)]
-    pub fn is_push(&self) -> bool {
-        use self::StackAction::*;
-        match *self {
-            Push(_) => true,
-            Pop(_, _) => false,
-        }
-    }
-
-    #[cfg(test)]
-    pub fn is_pop(&self) -> bool {
-        ! self.is_push()
     }
 }
 
@@ -303,8 +285,8 @@ from_stmt!(Loop, LoopStmt);
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct StackStmt {
-    tokens: Tokens,
-    stack_actions: Vec<StackAction>,
+    pub tokens: Tokens,
+    pub stack_actions: Vec<StackAction>,
 }
 
 impl StackStmt  {
@@ -313,10 +295,6 @@ impl StackStmt  {
             tokens,
             stack_actions,
         }
-    }
-
-    pub fn stack_actions(&self) -> &[StackAction] {
-        &self.stack_actions
     }
 }
 
@@ -357,12 +335,6 @@ macro_rules! block_stmt {
                     $( $param , )*
                 }
             }
-
-            $(
-            pub fn $param(&self) -> &$type {
-                &self.$param
-            }
-            )*
         }
 
         #[cfg(test)]
@@ -418,8 +390,8 @@ macro_rules! block_lookaheads {
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Block {
-    tokens: Tokens,
-    block: Vec<Stmt>,
+    pub tokens: Tokens,
+    pub block: Vec<Stmt>,
 }
 
 block_stmt!(Block
@@ -429,9 +401,9 @@ block_stmt!(Block
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct BrStmt {
-    tokens: Tokens,
-    block: Block,
-    el_stmt: Option<ElStmt>,
+    pub tokens: Tokens,
+    pub block: Block,
+    pub el_stmt: Option<ElStmt>,
 }
 
 block_stmt!(BrStmt
@@ -441,8 +413,8 @@ block_stmt!(BrStmt
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct ElStmt {
-    tokens: Tokens,
-    block: Block,
+    pub tokens: Tokens,
+    pub block: Block,
 }
 
 block_stmt!(ElStmt
@@ -452,8 +424,8 @@ block_stmt!(ElStmt
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct LoopStmt {
-    tokens: Tokens,
-    block: Block,
+    pub tokens: Tokens,
+    pub block: Block,
 }
 
 block_stmt!(LoopStmt
@@ -473,9 +445,9 @@ pub enum TopLevel {
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct FunDef {
-    tokens: Tokens,
-    name: String,
-    block: Block,
+    pub tokens: Tokens,
+    pub name: String,
+    pub block: Block,
 }
 
 impl FunDef {
@@ -523,7 +495,7 @@ impl Debug for FunDef {
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Import {
-    tokens: Tokens,
+    pub tokens: Tokens,
     pub(in syntax) path: String,
 }
 
@@ -563,6 +535,51 @@ impl Debug for Import {
     }
 }
 
+/// Defines a type that can be used as a foreign function's return.
+#[derive(Clone, PartialEq, Debug)]
+pub enum FFType {
+    Int,
+    String,
+
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct ForeignFunction {
+    pub name: String,
+    pub params: Vec<FFType>,
+}
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
+pub struct Foreign {
+    pub tokens: Tokens,
+    pub functions: Vec<ForeignFunction>,
+}
+
+impl ASTNode for Foreign {
+    fn tokens(&self) -> &[RcToken] {
+        &self.tokens
+    }
+
+    fn lookaheads() -> &'static [TokenType] {
+        lookaheads!(TokenType::KwForeign)
+    }
+}
+
+#[cfg(test)]
+impl Debug for Foreign {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Foreign {{ functions: {:?} }}", self.functions)
+    }
+}
+
+#[cfg(test)]
+impl PartialEq for Foreign {
+    fn eq(&self, other: &Self) -> bool {
+        self.functions == other.functions
+    }
+}
+
 pub type TopLevelList = Vec<TopLevel>;
 pub type FunDefList = Vec<FunDef>;
 
@@ -577,5 +594,4 @@ pub struct FilledAST {
     pub ast: FunDefList,
     pub path: String,
 }
-
 

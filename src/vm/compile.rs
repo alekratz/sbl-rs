@@ -32,7 +32,7 @@ impl<'ast> Compiler<'ast> {
                     return Err(format!("function already exists: `{}`", &fun_name).into());
                 }
             }
-            let mut block = self.compile_block(fun.block(), 0)?;
+            let mut block = self.compile_block(&fun.block, 0)?;
             block.push(Bc::ret(fun.tokens().into()));
             let built_fun = Fun::new(fun_name, block, fun.tokens().into());
 
@@ -49,23 +49,23 @@ impl<'ast> Compiler<'ast> {
 
     fn compile_block(&self, block: &'ast Block, jmp_offset: usize) -> Result<BcBody> {
         let mut body = vec![];
-        for stmt in block.block() {
-            match stmt {
-                &Stmt::Stack(ref s) => body.append(&mut self.compile_stack_stmt(s)?
+        for stmt in &block.block {
+            match *stmt {
+                Stmt::Stack(ref s) => body.append(&mut self.compile_stack_stmt(s)?
                                                    .into_iter()
                                                    .map(Some)
                                                    .collect()),
-                &Stmt::Br(ref br) => {
+                Stmt::Br(ref br) => {
                     let start_addr = body.len();
                     body.push(None);  // placeholder for later
-                    body.append(&mut self.compile_block(br.block(), jmp_offset + start_addr + 1)?
+                    body.append(&mut self.compile_block(&br.block, jmp_offset + start_addr + 1)?
                                 .into_iter()
                                 .map(Some)
                                 .collect());
-                    let end_addr = if let &Some(ref el) = br.el_stmt() {
+                    let end_addr = if let &Some(ref el) = &br.el_stmt {
                         let end_addr = body.len();
                         body.push(None);
-                        body.append(&mut self.compile_block(el.block(), jmp_offset + end_addr + 1)?
+                        body.append(&mut self.compile_block(&el.block, jmp_offset + end_addr + 1)?
                                 .into_iter()
                                 .map(Some)
                                 .collect());
@@ -77,10 +77,10 @@ impl<'ast> Compiler<'ast> {
                     };
                     body[start_addr] = Some(Bc::jmpz(br.tokens().into(), Val::Int(end_addr as i64)));
                 },
-                &Stmt::Loop(ref lp) => {
+                Stmt::Loop(ref lp) => {
                     let start_addr = body.len();
                     body.push(None);
-                    body.append(&mut self.compile_block(lp.block(), jmp_offset + start_addr + 1)?
+                    body.append(&mut self.compile_block(&lp.block, jmp_offset + start_addr + 1)?
                                 .into_iter()
                                 .map(Some)
                                 .collect());
@@ -95,11 +95,11 @@ impl<'ast> Compiler<'ast> {
 
     fn compile_stack_stmt(&self, stmt: &'ast StackStmt) -> Result<BcBody> {
         let mut body = BcBody::new();
-        for action in stmt.stack_actions() {
-            match action {
-                &StackAction::Push(ref i) => body.append(&mut self.compile_item_push(i)?),
-                &StackAction::Pop(_, ref i) => {
-                    if matches!(i.item_type(), &ItemType::Int(_)) {
+        for action in &stmt.stack_actions {
+            match *action {
+                StackAction::Push(ref i) => body.append(&mut self.compile_item_push(i)?),
+                StackAction::Pop(_, ref i) => {
+                    if matches!(i.item_type, ItemType::Int(_)) {
                         body.push(Bc::popn(action.tokens().into(), i.into()))
                     }
                     else {
@@ -112,11 +112,11 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile_item_push(&self, item: &'ast Item) -> Result<BcBody> {
-        match item.item_type() {
-            &ItemType::Stack(_) => {
+        match item.item_type {
+            ItemType::Stack(_) => {
                 self.compile_local_stack(item)
             },
-            &ItemType::Ident(ref ident) => {
+            ItemType::Ident(ref ident) => {
                 if self.fun_table.contains_key(ident) || BUILTINS.contains_key(ident.as_str()) {
                     Ok(vec![Bc::call(item.tokens().into(), item.into())])
                 }
@@ -129,8 +129,8 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile_local_stack(&self, item: &'ast Item) -> Result<BcBody> {
-        assert_matches!(item.item_type(), &ItemType::Stack(_));
-        let items = if let &ItemType::Stack(ref stack) = item.item_type() {
+        assert_matches!(item.item_type, ItemType::Stack(_));
+        let items = if let ItemType::Stack(ref stack) = item.item_type {
             stack
         }
         else { unreachable!() };

@@ -407,6 +407,7 @@ impl<'c> Tokenizer<'c> {
                     "import" => TokenType::KwImport,
                     "T" => TokenType::KwT,
                     "F" => TokenType::KwF,
+                    "foreign" => TokenType::KwForeign,
                 }
             };
         };
