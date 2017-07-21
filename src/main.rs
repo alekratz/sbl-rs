@@ -10,6 +10,8 @@ extern crate clap;
 extern crate matches;
 #[macro_use]
 extern crate enum_methods;
+extern crate libc;
+extern crate libffi;
 
 mod syntax;
 mod vm;

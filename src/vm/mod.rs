@@ -1,6 +1,7 @@
 mod compile;
 mod vm;
 mod builtins;
+mod foreign;
 
 pub use self::compile::*;
 pub use self::vm::*;

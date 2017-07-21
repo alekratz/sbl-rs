@@ -77,6 +77,20 @@ pub enum ItemType {
     Nil,
 }
 
+impl ItemType {
+    pub fn type_string(&self) -> &'static str {
+        match self {
+            &ItemType::Int(_) => "int",
+            &ItemType::Ident(_) => "identifier",
+            &ItemType::Char(_) => "char",
+            &ItemType::String(_) => "string",
+            &ItemType::Bool(_) => "bool",
+            &ItemType::Stack(_) => "local stack",
+            &ItemType::Nil => "nil",
+        }
+    }
+}
+
 impl From<Item> for ItemType {
     fn from(item: Item) -> Self {
         item.item_type
@@ -496,7 +510,7 @@ impl Debug for FunDef {
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Import {
     pub tokens: Tokens,
-    pub(in syntax) path: String,
+    pub path: String,
 }
 
 impl Import {
@@ -535,25 +549,23 @@ impl Debug for Import {
     }
 }
 
-/// Defines a type that can be used as a foreign function's return.
 #[derive(Clone, PartialEq, Debug)]
-pub enum FFType {
-    Int,
-    String,
-
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct ForeignFunction {
+pub struct ForeignFn {
+    /// Name of the foreign function to call.
     pub name: String,
-    pub params: Vec<FFType>,
+    /// Name of the library where the foreign function exists.
+    pub lib: String,
+    /// List of the parameters that this call takes.
+    pub params: Vec<ItemType>,
+    /// The return type of the function.
+    pub return_type: ItemType,
 }
 
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Foreign {
     pub tokens: Tokens,
-    pub functions: Vec<ForeignFunction>,
+    pub functions: Vec<ForeignFn>,
 }
 
 impl ASTNode for Foreign {

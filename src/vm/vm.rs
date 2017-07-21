@@ -1,6 +1,7 @@
 use errors::*;
 use vm::*;
 use vm::builtins::*;
+use libc::c_void;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
@@ -39,10 +40,19 @@ impl From<Rc<Fun>> for FunState {
 pub(in vm) struct State {
     pub stack: Vec<Val>,
     pub call_stack: Vec<FunState>,
+    pub dl_handles: HashMap<String, *mut c_void>,
+    pub foreign_functions: HashMap<String, *mut c_void>,
 }
 
 impl State {
-    pub fn new() -> Self { State { stack: vec![], call_stack: vec![] } }
+    pub fn new() -> Self {
+        State {
+            stack: vec![],
+            call_stack: vec![],
+            dl_handles: HashMap::new(),
+            foreign_functions: HashMap::new(),
+        }
+    }
 
     pub fn load(&self, name: &str) -> Result<&Val> {
         let caller = self.current_fun();
@@ -127,7 +137,7 @@ impl State {
 
 pub struct VM {
     fun_table: FunTable,
-    // TODO : builtins
+    foreign_funs: Vec<ForeignFn>,
     state: RefCell<State>,
 }
 
@@ -135,11 +145,15 @@ impl VM {
     pub fn new(fun_table: FunTable) -> Self {
         VM {
             fun_table,
+            foreign_funs: Vec::new(),  // TODO : Fill this in
             state: RefCell::new(State::new()),
         }
     }
 
     pub fn run(&mut self) -> Result<()> {
+        for ref f in self.foreign_funs {
+            f.load(&mut self.state.borrow_mut());
+        }
         self.invoke("main")
     }
 
