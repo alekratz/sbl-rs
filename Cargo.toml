@@ -11,4 +11,4 @@ lazy_static = { git = "https://github.com/alekratz/lazy-static.rs" }
 maplit = "0.1.4"
 clap = "2.25"
 matches = "0.1.6"
-enum-methods = "0.0.3"
+enum-methods = "0.0.4"
