@@ -66,6 +66,7 @@ pub enum TokenType {
     KwT,
     KwF,
     KwLoop,
+    KwForeign,
 }
 
 impl Display for TokenType {
@@ -95,6 +96,7 @@ impl Display for TokenType {
             KwT => "T keyword",
             KwF => "F keyword",
             KwLoop => "loop keyword",
+            KwForeign => "foreign keyword",
         };
         write!(f, "{}", s)
     }
@@ -520,6 +522,7 @@ mod test {
             F
             @
             import
+            foreign
             "#,
             (TokenType::KwBr)
             (TokenType::KwEl)
@@ -528,6 +531,7 @@ mod test {
             (TokenType::KwF)
             (TokenType::KwNil)
             (TokenType::KwImport)
+            (TokenType::KwForeign)
         };
     }
 
