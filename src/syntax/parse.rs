@@ -124,7 +124,8 @@ impl<'c> Parser<'c> {
      */
     fn expect_top_level(&mut self) -> Result<TopLevel> {
         if self.can_match_any(Import::lookaheads()) {
-            Ok(TopLevel::Import(self.expect_import()?))
+            Ok(TopLevel::Import(self.expect_import()
+                                .chain_err(|| "while parsing import statement")?))
         }
         else if self.can_match_any(FunDef::lookaheads()) {
             Ok(TopLevel::FunDef(self.expect_fun()?))
@@ -143,11 +144,6 @@ impl<'c> Parser<'c> {
         let str_token = self.match_token(TokenType::String)?;
         let path = str_token.unescape();
         tokens.push(str_token.into_rc());
-        let token_range = tokens.range()
-            .clone();
-        tokens.push(self.match_token(TokenType::Semi)
-                    .chain_err(|| token_range)
-                    .chain_err(|| "while parsing import statement")?.into_rc());
         Ok(Import::new(tokens, path))
     }
 
@@ -221,7 +217,7 @@ impl<'c> Parser<'c> {
     fn expect_stack_stmt(&mut self) -> Result<StackStmt> {
         let mut tokens = vec![];
         let mut actions = vec![];
-        while !self.can_match_token(TokenType::Semi) && self.curr.is_some() {
+        while !self.can_match_any(&[TokenType::RBrace, TokenType::KwBr, TokenType::KwLoop]) && self.curr.is_some() {
             let action = if tokens.len() > 0 {
                 self.expect_stack_action()
                     .chain_err(|| tokens.range())
@@ -232,7 +228,6 @@ impl<'c> Parser<'c> {
             tokens.append_node(&action);
             actions.push(action);
         }
-        tokens.push(self.match_token(TokenType::Semi)?.into_rc());
         Ok(StackStmt::new(tokens, actions))
     }
 
