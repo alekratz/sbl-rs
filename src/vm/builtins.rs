@@ -195,14 +195,8 @@ fn len_o(state: &mut State) -> Result<()> {
 }
 
 fn len_c(state: &mut State) -> Result<()> {
-    let len = {
-        let p = state.pop()?;
-        if !p.is_stack() {
-            return Err(format!("expected TOS item to be stack; instead got {}", p.type_string()).into());
-        }
-        p.stack().len()
-    };
-    state.push(Val::Int(len as i64));
+    len_o(state)?;
+    state.pop()?;
     Ok(())
 }
 
@@ -217,9 +211,9 @@ fn print_o(state: &mut State) -> Result<()> {
 }
 
 fn print_c(state: &mut State) -> Result<()> {
-	print_o(state)?;
-	state.pop();
-	Ok(())
+    print_o(state)?;
+    state.pop()?;
+    Ok(())
 }
 
 fn println_o(state: &mut State) -> Result<()> {
@@ -230,6 +224,6 @@ fn println_o(state: &mut State) -> Result<()> {
 
 fn println_c(state: &mut State) -> Result<()> {
     println_o(state)?;
-    state.pop();
+    state.pop()?;
     Ok(())
 }
