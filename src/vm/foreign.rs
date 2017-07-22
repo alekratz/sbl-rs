@@ -1,7 +1,7 @@
 use errors::*;
 use syntax::{ForeignFn, ItemType};
 use vm::{State, Val};
-use libc::{self, RTLD_NOW};
+use libc::{self, RTLD_NOW, c_char};
 use libffi::low::CodePtr;
 use libffi::high::call::{call, Arg};
 use std::ffi::{self, CString};
@@ -11,7 +11,7 @@ use std::os::raw;
 enum FfiVal {
     Int(i64),
     Char(u8),
-    String(*const u8),
+    String(*const c_char),
     Bool(i32),
     //Stack(&'a *const c_void),
     Nil(()),
@@ -36,7 +36,10 @@ fn ff_key(lib: &str, name: &str) -> String {
 impl ForeignFn {
     /// Makes a call into a foreign function.
     pub(in vm) fn call(&self, state: &mut State) -> Result<()> {
+        // string pool holds all of the strings that we have to re-allocate as CStrings
+        let mut string_pool = vec![];
         let mut val_args = vec![];
+        eprintln!("calling {}", &self.name);
         for p in &self.params {
             let arg = state.pop()?;
             let matches = match *p {
@@ -51,6 +54,7 @@ impl ForeignFn {
             if !matches {
                 return Err(format!("expected argument of type {}; instead got {}", p.type_string(), arg.type_string()).into());
             }
+            eprintln!("arg: {:?}", arg);
             val_args.push(arg);
         }
 
@@ -61,7 +65,11 @@ impl ForeignFn {
             .map(|v| match v {
                 &Val::Int(i) => FfiVal::Int(i),
                 &Val::Char(c) => FfiVal::Char(c as u8),
-                &Val::String(ref s) => FfiVal::String(s.as_ptr()),
+                &Val::String(ref s) => {
+                    let c_str = CString::new(s.as_str()).unwrap();
+                    string_pool.push(c_str);
+                    FfiVal::String(string_pool.last().as_ref().unwrap().as_ptr())
+                },
                 &Val::Bool(b) => FfiVal::Bool(if b { 1 } else { 0 }),
                 &Val::Nil => FfiVal::Nil(()),
                 _ => unreachable!(),
