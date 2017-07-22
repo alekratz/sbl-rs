@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 
 pub struct FunState {
-    pub fun: Rc<Fun>,
+    pub fun: Rc<UserFun>,
     pub pc: usize,
     pub locals: HashMap<String, Val>,
     // TODO : callsite
@@ -27,8 +27,8 @@ impl FunState {
     }
 }
 
-impl From<Rc<Fun>> for FunState {
-    fn from(other: Rc<Fun>) -> Self {
+impl From<Rc<UserFun>> for FunState {
+    fn from(other: Rc<UserFun>) -> Self {
         FunState {
             fun: other,
             pc: 0,
@@ -37,7 +37,7 @@ impl From<Rc<Fun>> for FunState {
     }
 }
 
-pub(in vm) struct State {
+pub struct State {
     pub stack: Vec<Val>,
     pub call_stack: Vec<FunState>,
     pub dl_handles: HashMap<String, *mut c_void>,
@@ -159,23 +159,34 @@ impl VM {
     }
 
     fn invoke(&mut self, fun_name: &str) -> Result<()> {
-        if let Some(fun) = self.fun_table.get(fun_name) {
-            let mut state = self.state
-                .borrow_mut();
-            state.push_fun(fun.clone().into());
+        let fun = self.fun_table
+            .get(fun_name)
+            .expect(&format!("expected function `{}` but none was found; compiler should have caught this", fun_name))
+            .clone();
+        match &fun as &Fun {
+            &Fun::UserFun(ref fun) => {
+                {
+                    let mut state = self.state.borrow_mut();
+                    state.push_fun(fun.clone().into());
+                }
+                self.invoke_user_fun()?;
+                {
+                    let mut state = self.state.borrow_mut();
+                    state.pop_fun();
+                }
+                Ok(())
+            },
+            &Fun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
+            &Fun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
         }
-        else if let Some(fun) = BUILTINS.get(fun_name) {
-            return fun(&mut self.state.borrow_mut());
-        }
-        else {
-            return Err(format!("tried to call undefined function `{}`", fun_name).into());
-        }
+    }
 
+    fn invoke_user_fun(&mut self) -> Result<()> {
         loop {
             let (bc_type, val) = {
                 let state = self.state.borrow();
                 let fun = state.current_fun();
-                let ref bc = fun.fun.body()[fun.pc];
+                let ref bc = fun.fun.body[fun.pc];
                 (*bc.bc_type(), bc.val_clone())
             };
 
@@ -258,11 +269,6 @@ impl VM {
                     BcType::Ret => break,
                 }
             }
-        }
-
-        {
-            let mut state = self.state.borrow_mut();
-            state.pop_fun();
         }
         Ok(())
     }

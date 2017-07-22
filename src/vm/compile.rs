@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 /// A BoringTable is the predecessor to a FunTable; function names are first
 /// gathered, and then filled in.
-type BoringTable = HashMap<String, Option<Rc<Fun>>>;
+type BoringTable = HashMap<String, Option<Fun>>;
 
 pub struct Compiler<'ast> {
     ast: &'ast AST,
@@ -14,7 +14,12 @@ pub struct Compiler<'ast> {
 
 impl<'ast> Compiler<'ast> {
     pub fn new(ast: &'ast AST) -> Self {
-        Compiler { ast, fun_table: BoringTable::new() }
+        Compiler {
+            ast,
+            fun_table: BUILTINS.iter()
+                .map(|(k, v)| (k.to_string(), Some(Fun::BuiltinFun(v))) )
+                .collect::<HashMap<String, _>>(),
+        }
     }
 
     /// Consumes the compiler, producing a `FunTable` on success or message on
@@ -28,17 +33,19 @@ impl<'ast> Compiler<'ast> {
                 {
                     let fun_entry = self.fun_table.get(&fun_name)
                         .expect("got function with name that was not filled out");
-                    assert!(fun_entry.is_none(), "found duplicate function that was not caught in fill_boring_table(): `{}` {:?}",
-                        fun_name, fun_entry.as_ref().unwrap());
+                    assert!(fun_entry.is_none(), "found duplicate function that was not caught in fill_boring_table(): `{}`", fun_name);
                 }
                 let mut block = self.compile_block(&fun.block, 0)?;
                 block.push(Bc::ret(fun.tokens().into()));
-                let built_fun = Fun::new(fun_name, block, fun.tokens().into());
+                let built_fun = UserFun::new(fun_name, block, fun.tokens().into());
 
-                self.fun_table.insert(built_fun.name().into(), Some(Rc::new(built_fun)));
+                self.fun_table.insert(built_fun.name.clone(), Some(Fun::UserFun(Rc::new(built_fun))));
             }
         }
-        Ok(self.fun_table.into_iter().map(|(k, v)| (k, v.unwrap())).collect())
+        Ok(self.fun_table
+           .into_iter()
+           .map(|(k, v)| (k, Rc::new(v.unwrap())))
+           .collect())
     }
 
     fn is_fun_name<S>(&self, name: S) -> bool
@@ -53,15 +60,37 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn fill_boring_table(&mut self) -> Result<()> {
+        // TODO : refactor and de-duplicate
         for top in &self.ast.ast {
-            if let &TopLevel::FunDef(ref fun) = top {
-                if self.is_fun_name(fun.name()) {
-                    return (Err(format!("function `{}` has already been defined", fun.name()).into()) as Result<_>)
-                        .chain_err(|| fun.range());
-                }
-                else {
+            match top {
+                &TopLevel::FunDef(ref fun) => {
+                    if let Some(other) = self.fun_table.get(&fun.name) {
+                        match *other {
+                            Some(Fun::ForeignFun(_)) | None => {  // None means it's a function we inserted earlier
+                                return (Err(format!("function `{}` has already been defined", fun.name()).into()) as Result<_>)
+                                    .chain_err(|| fun.range());
+                            }
+                            _ => { },
+                        }
+                    }
                     self.fun_table.insert(fun.name().to_string(), None);
-                }
+                },
+                &TopLevel::Foreign(ref foreign) => {
+                    for frn_fun in &foreign.functions {
+                        if let Some(other) = self.fun_table.get(&frn_fun.name) {
+                            match *other {
+                                Some(Fun::ForeignFun(_)) | None => {  // None means it's a function we inserted earlier
+                                    return (Err(format!("function `{}` has already been defined", &frn_fun.name).into()) as Result<_>)
+                                        .chain_err(|| frn_fun.range());
+                                }
+                                _ => { },
+                            }
+                        }
+                        self.fun_table.insert(frn_fun.name.clone(), Some(Fun::ForeignFun(frn_fun.clone())));
+                    }
+                },
+
+                _ => panic!("got unprocessed top-level: {:#?}", top),
             }
         }
         Ok(())

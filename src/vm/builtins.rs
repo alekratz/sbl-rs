@@ -3,13 +3,13 @@ use vm::*;
 use std::collections::HashMap;
 use std::cmp::Ordering;
 
-type BuiltinFn = fn(&mut State) -> Result<()>;
+pub type BuiltinFun = fn(&mut State) -> Result<()>;
 
 lazy_static! {
-    pub(in vm) static ref BUILTINS: HashMap<&'static str, BuiltinFn> = {
+    pub(in vm) static ref BUILTINS: HashMap<&'static str, BuiltinFun> = {
         hashmap! {
             // Operations
-            "+" => plus as BuiltinFn,  // for some reason this cascades down the list
+            "+" => plus as BuiltinFun,  // for some reason this cascades down the list
             "-" => minus,
             "*" => times,
             "/" => divide,

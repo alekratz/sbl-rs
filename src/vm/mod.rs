@@ -181,28 +181,22 @@ impl Bc {
 pub type BcBody = Vec<Bc>;
 
 #[derive(Clone, Debug)]
-pub struct Fun {
-    name: String,
-    body: BcBody,
-    tokens: Tokens,
+pub struct UserFun {
+    pub name: String,
+    pub body: BcBody,
+    pub tokens: Tokens,
 }
 
-impl Fun {
+impl UserFun {
     pub fn new(name: String, body: BcBody, tokens: Tokens) -> Self {
-        Fun { name, body, tokens }
+        UserFun { name, body, tokens }
     }
+}
 
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn tokens(&self) -> &[RcToken] {
-        &self.tokens
-    }
-
-    pub fn body(&self) -> &[Bc] {
-        &self.body
-    }
+pub enum Fun {
+    UserFun(Rc<UserFun>),
+    ForeignFun(ForeignFn),
+    BuiltinFun(&'static BuiltinFun),
 }
 
 pub type FunTable = HashMap<String, Rc<Fun>>;

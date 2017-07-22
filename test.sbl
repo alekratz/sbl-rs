@@ -1,6 +1,7 @@
 # Example program
 # factorial
 import "basic.sbl"
+import "io.sbl"
 
 fact {
     # duplicate and compare to zero
