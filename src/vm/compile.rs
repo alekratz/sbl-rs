@@ -8,43 +8,63 @@ use std::rc::Rc;
 type BoringTable = HashMap<String, Option<Rc<Fun>>>;
 
 pub struct Compiler<'ast> {
-    ast: &'ast FilledAST,
+    ast: &'ast AST,
     fun_table: BoringTable,
 }
 
 impl<'ast> Compiler<'ast> {
-    pub fn new(ast: &'ast FilledAST) -> Self {
-        // TODO : builtins
+    pub fn new(ast: &'ast AST) -> Self {
         Compiler { ast, fun_table: BoringTable::new() }
     }
 
     /// Consumes the compiler, producing a `FunTable` on success or message on
     /// error.
     pub fn compile(mut self) -> Result<FunTable> {
-        self.fill_boring_table();
-        for fun in &self.ast.ast {
-            let fun_name = fun.name()
-                .to_string();
-            {
-                let fun_entry = self.fun_table.get(&fun_name)
-                    .expect("got function with name that was not filled out");
-                if fun_entry.is_some() {
-                    return Err(format!("function already exists: `{}`", &fun_name).into());
+        self.fill_boring_table()?;
+        for top in &self.ast.ast {
+            if let &TopLevel::FunDef(ref fun) = top {
+                let fun_name = fun.name()
+                    .to_string();
+                {
+                    let fun_entry = self.fun_table.get(&fun_name)
+                        .expect("got function with name that was not filled out");
+                    assert!(fun_entry.is_none(), "found duplicate function that was not caught in fill_boring_table(): `{}` {:?}",
+                        fun_name, fun_entry.as_ref().unwrap());
                 }
-            }
-            let mut block = self.compile_block(&fun.block, 0)?;
-            block.push(Bc::ret(fun.tokens().into()));
-            let built_fun = Fun::new(fun_name, block, fun.tokens().into());
+                let mut block = self.compile_block(&fun.block, 0)?;
+                block.push(Bc::ret(fun.tokens().into()));
+                let built_fun = Fun::new(fun_name, block, fun.tokens().into());
 
-            self.fun_table.insert(built_fun.name().into(), Some(Rc::new(built_fun)));
+                self.fun_table.insert(built_fun.name().into(), Some(Rc::new(built_fun)));
+            }
         }
         Ok(self.fun_table.into_iter().map(|(k, v)| (k, v.unwrap())).collect())
     }
 
-    fn fill_boring_table(&mut self) {
-        for fun in &self.ast.ast {
-            self.fun_table.insert(fun.name().to_string(), None);
+    fn is_fun_name<S>(&self, name: S) -> bool
+        where String: PartialEq<S> {
+        self.ast.ast
+            .iter()
+            .any(|t| match t {
+                &TopLevel::FunDef(ref f) => f.name == name,
+                &TopLevel::Foreign(ref f) => f.functions.iter().any(|u| u.name == name),
+                _ => false,
+            })
+    }
+
+    fn fill_boring_table(&mut self) -> Result<()> {
+        for top in &self.ast.ast {
+            if let &TopLevel::FunDef(ref fun) = top {
+                if self.is_fun_name(fun.name()) {
+                    return (Err(format!("function `{}` has already been defined", fun.name()).into()) as Result<_>)
+                        .chain_err(|| fun.range());
+                }
+                else {
+                    self.fun_table.insert(fun.name().to_string(), None);
+                }
+            }
         }
+        Ok(())
     }
 
     fn compile_block(&self, block: &'ast Block, jmp_offset: usize) -> Result<BcBody> {

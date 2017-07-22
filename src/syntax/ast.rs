@@ -391,16 +391,6 @@ macro_rules! block_stmt {
     };
 }
 
-macro_rules! block_lookaheads {
-    ($name:ident $($lookaheads:tt)+) => {
-        impl ASTNode for $name {
-            fn lookaheads() -> &'static [TokenType] {
-                lookaheads!($($lookaheads)+)
-            }
-        }
-    }
-}
-
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Block {
@@ -454,6 +444,7 @@ block_stmt!(LoopStmt
 pub enum TopLevel {
     FunDef(FunDef),
     Import(Import),
+    Foreign(Foreign),
 }
 
 #[derive(Clone)]
@@ -549,8 +540,10 @@ impl Debug for Import {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct ForeignFn {
+    pub tokens: Tokens,
     /// Name of the foreign function to call.
     pub name: String,
     /// Name of the library where the foreign function exists.
@@ -561,11 +554,49 @@ pub struct ForeignFn {
     pub return_type: ItemType,
 }
 
+impl ForeignFn {
+    pub fn new(tokens: Tokens, name: String, lib: String, params: Vec<ItemType>, return_type: ItemType) -> Self {
+        ForeignFn { tokens, name, lib, params, return_type }
+    }
+}
+
+impl ASTNode for ForeignFn {
+    fn tokens(&self) -> &[RcToken] {
+        &self.tokens
+    }
+
+    fn lookaheads() -> &'static [TokenType] {
+        lookaheads!(TokenType::Ident)
+    }
+}
+
+#[cfg(test)]
+impl Debug for ForeignFn {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "ForeignFn {{ name: {} lib: {} params: {:?} return_type: {:?} }}",
+               self.name, self.lib, self.params, self.return_type)
+    }
+}
+
+#[cfg(test)]
+impl PartialEq for ForeignFn {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.lib == other.lib
+            && self.params == other.params && self.return_type == other.return_type
+    }
+}
+
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Foreign {
     pub tokens: Tokens,
     pub functions: Vec<ForeignFn>,
+}
+
+impl Foreign {
+    pub fn new(tokens: Tokens, functions: Vec<ForeignFn>) -> Self {
+        Foreign { tokens, functions }
+    }
 }
 
 impl ASTNode for Foreign {
@@ -601,9 +632,10 @@ pub struct AST {
     pub path: String,
 }
 
+/*
 /// A pre-processed AST, ready to be compiled.
 pub struct FilledAST {
     pub ast: FunDefList,
     pub path: String,
 }
-
+*/

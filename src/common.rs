@@ -1,5 +1,5 @@
 use errors::*;
-use syntax::{AST, FilledAST, Tokenizer, Parser};
+use syntax::{AST, Tokenizer, Parser};
 use error_chain::ChainedError;
 use std::sync::Arc;
 use std::fmt::{Formatter, Debug, Display, self};
@@ -35,7 +35,7 @@ pub fn read_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
 }
 
 /// Processes the contents of a file to a filled AST.
-pub fn process_source_path<P: AsRef<Path>, Q: AsRef<Path>>(path: P, search_dirs: &[Q]) -> Result<FilledAST> {
+pub fn process_source_path<P: AsRef<Path>, Q: AsRef<Path>>(path: P, search_dirs: &[Q]) -> Result<AST> {
     let contents = match read_file(&path) {
         Ok(c) => c,
         Err(e) => {

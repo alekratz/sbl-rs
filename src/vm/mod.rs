@@ -180,6 +180,7 @@ impl Bc {
 
 pub type BcBody = Vec<Bc>;
 
+#[derive(Clone, Debug)]
 pub struct Fun {
     name: String,
     body: BcBody,

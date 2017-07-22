@@ -4,7 +4,7 @@ use syntax::*;
 use std::path::{Path, PathBuf};
 
 impl Import {
-    pub fn import<P: AsRef<Path>>(self, search_dirs: &[P]) -> Result<FunDefList> {
+    pub fn import<P: AsRef<Path>>(self, search_dirs: &[P]) -> Result<TopLevelList> {
 
         // we also want to append the source dir of the current file to the PATH
         let source_path = &self.range()
@@ -30,12 +30,12 @@ impl Import {
 
 impl AST {
 
-    pub fn preprocess<P: AsRef<Path>>(self, search_dirs: &[P]) -> Result<FilledAST> {
+    pub fn preprocess<P: AsRef<Path>>(self, search_dirs: &[P]) -> Result<AST> {
         let AST { ast, path } = self;
         let (ast, errors) = ast.into_iter()
             .map(|top| {
                 match top {
-                    TopLevel::FunDef(f) => Ok(vec![f]),
+                    TopLevel::FunDef(_) | TopLevel::Foreign(_) => Ok(vec![top]),
                     TopLevel::Import(i) => i.import(search_dirs),
                 }
             })
@@ -56,7 +56,7 @@ impl AST {
             .flat_map(id)
             .collect::<Vec<_>>();
 
-        Ok(FilledAST {
+        Ok(AST {
             ast,
             path,
         })

@@ -2,6 +2,7 @@ use errors::*;
 use common::*;
 use syntax::token::*;
 use syntax::ast::*;
+use std::collections::HashMap;
 
 pub struct Parser<'c> {
     tokenizer: Tokenizer<'c>,
@@ -126,14 +127,18 @@ impl<'c> Parser<'c> {
         if self.can_match_any(Import::lookaheads()) {
             Ok(TopLevel::Import(self.expect_import()
                                 .chain_err(|| "while parsing import statement")?))
-        }
+        } 
         else if self.can_match_any(FunDef::lookaheads()) {
             Ok(TopLevel::FunDef(self.expect_fun()?))
+        }
+        else if self.can_match_any(Foreign::lookaheads()) {
+            Ok(TopLevel::Foreign(self.expect_foreign()?))
         }
         else {
             let mut all = vec![];
             all.extend_from_slice(FunDef::lookaheads());
             all.extend_from_slice(Import::lookaheads());
+            all.extend_from_slice(Foreign::lookaheads());
             self.match_any(&all)?;
             unreachable!()
         }
@@ -145,6 +150,55 @@ impl<'c> Parser<'c> {
         let path = str_token.unescape();
         tokens.push(str_token.into_rc());
         Ok(Import::new(tokens, path))
+    }
+
+    fn expect_foreign(&mut self) -> Result<Foreign> {
+        let mut tokens = vec![self.match_any(Foreign::lookaheads())?.into_rc()];
+        let lib_token = self.match_token(TokenType::String)?;
+        let lib = lib_token.unescape();
+        tokens.push(lib_token.into_rc());
+        // TODO : allow for single-shot function definitions that don't require braces that don't
+        // require braces
+        tokens.push(self.match_token(TokenType::LBrace)?.into_rc());
+        let mut funs = vec![];
+        while !self.can_match_token(TokenType::RBrace) && self.curr.is_some() {
+            let foreign_fn = self.expect_foreign_fun(&lib)?;
+            tokens.append_node(&foreign_fn);
+            funs.push(foreign_fn);
+        }
+        tokens.push(self.match_token(TokenType::RBrace)?.into_rc());
+        Ok(Foreign::new(tokens, funs))
+    }
+
+    fn expect_foreign_fun(&mut self, lib: &str) -> Result<ForeignFn> {
+        fn type_map(name: &str) -> Result<ItemType> {
+            match name {
+                "int" => Ok(ItemType::Int(0)),
+                "char" => Ok(ItemType::Char('\0')),
+                "string" => Ok(ItemType::String(String::new())),
+                "bool" => Ok(ItemType::Bool(false)),
+                "void" => Ok(ItemType::Nil),
+                t => Err(format!("unknown foreign type `{}`", t).into()),
+            }
+        }
+
+        let return_type_token = self.match_token(TokenType::Ident)?;
+        let return_type = type_map(return_type_token.as_str())?;
+
+        let name_token = self.match_token(TokenType::Ident)?;
+        let name = String::from(name_token.as_str());
+
+        let mut tokens = vec![return_type_token.into_rc(), name_token.into_rc(), 
+            self.match_token(TokenType::LBrack)?.into_rc()];
+        let mut params = vec![];
+        // go through all of the types
+        while !self.can_match_token(TokenType::RBrack) && self.curr.is_some() {
+            let param_token = self.match_token(TokenType::Ident)?;
+            params.push(type_map(param_token.as_str())?);
+            tokens.push(param_token.into_rc());
+        }
+        tokens.push(self.match_token(TokenType::RBrack)?.into_rc());
+        Ok(ForeignFn::new(tokens, name, lib.to_string(), params, return_type))
     }
 
     fn expect_fun(&mut self) -> Result<FunDef> {
@@ -300,6 +354,7 @@ mod test {
     macro_rules! top_level {
         (FunDef $($tail:tt)+) => { TopLevel::FunDef(fun!($($tail)+)) };
         (Import $($tail:tt)+) => { TopLevel::Import(import!($($tail)+)) };
+        (Foreign $($tail:tt)+) => { TopLevel::Foreign(foreign!($($tail)+)) };
     }
 
     macro_rules! fun {
@@ -308,6 +363,31 @@ mod test {
 
     macro_rules! import {
         ($path:expr) => { Import::new(vec![], $path.to_string()) };
+    }
+
+    macro_rules! foreign {
+        ($path:expr ; { $($tail:tt)* }) => {
+            Foreign::new(vec![], foreign_fn!($path ; $($tail)*) )
+        };
+    }
+
+    macro_rules! foreign_fn {
+        ($path:expr ; $type:ident $name:ident [ $($params:ident)* ] $($tail:tt)*) => {{
+            let mut v = vec![
+                ForeignFn::new(vec![], stringify!($name).to_string(), $path.to_string(), vec![$(param!($params)),*], param!($type))
+            ];
+            v.append(&mut foreign_fn!($path ; $($tail)*));
+            v
+        }};
+        ($path:expr ;) => { vec![] };
+    }
+
+    macro_rules! param {
+        (int) => { ItemType::Int(0) };
+        (char) => { ItemType::Char('\0') };
+        (string) => { ItemType::String(String::new()) };
+        (bool) => { ItemType::Bool(false) };
+        (void) => { ItemType::Nil };
     }
 
     macro_rules! stmt {
@@ -386,31 +466,36 @@ mod test {
     fn test_parser_ast() {
         tests! {
             r#"
-            import "test.sbl";
-            import "basic.sbl";
+            import "test.sbl"
+            import "basic.sbl"
+
+            foreign "libc.6.so" {
+                int open [ string string ]
+                int close [ int ]
+            }
+
             foo {
-                1 2 3 .a .b .c;
-                $ .@;
-                ;
-                @ [1 2 3 4 5] ;   
+                1 2 3 .a .b .c
+                $ .@
+                @ [1 2 3 4 5] 
             }
 
             main {
-                a .a b .foo c .bar d .x e .2 f .@ ;
+                a .a b .foo c .bar d .x e .2 f .@ 
                 loop {
-                    .@;
-                    pop ^ println 0 ==;
+                    .@
+                    pop ^ println 0 ==
                 }
                 br {
-                    "success" println;
+                    "success" println
                     br {
-                        "success message: " print println;
+                        "success message: " print println
                     }
                 }
                 el {
-                    "failure:" println;
+                    "failure:" println
                     loop {
-                        "\t" print println;
+                        "\t" print println
                     }
                 }
             }
@@ -418,11 +503,14 @@ mod test {
 
             (expect_top_level, top_level!(Import "test.sbl"))
             (expect_top_level, top_level!(Import "basic.sbl"))
+            (expect_top_level, top_level!(Foreign "libc.6.so" ; {
+                int open [ string string ]
+                int close [ int ]
+            }))
             (expect_top_level, top_level!(FunDef "foo" => {
-                (Stack Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c")
-                (Stack Push Ident "$" Pop Nil)
-                (Stack )
-                (Stack Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)])
+                (Stack Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c"
+                       Push Ident "$" Pop Nil
+                       Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)])
             }))
             (expect_top_level, top_level!(FunDef "main" => {
                 (Stack
@@ -439,8 +527,8 @@ mod test {
                     Push Ident "f"
                     Pop Nil)
                 (Loop {
-                    (Stack Pop Nil)
-                    (Stack Push Ident "pop" Push Ident "^" Push Ident "println" Push Int 0 Push Ident "==")
+                    (Stack Pop Nil
+                           Push Ident "pop" Push Ident "^" Push Ident "println" Push Int 0 Push Ident "==")
                 })
                 (Br {
                     (Stack Push String "success" Push Ident "println")
@@ -462,33 +550,31 @@ mod test {
     fn test_parser_stmts() {
         tests! {
             r#"
-            1 2 3 .a .b .c;
-            $ .@;
-            ;
-            @ [1 2 3 4 5] ;
-            a .a b .foo c .bar d .x e .2 f .@ ;
+            1 2 3 .a .b .c
+            $ .@
+            
+            @ [1 2 3 4 5] 
+            a .a b .foo c .bar d .x e .2 f .@ 
             loop {
-                .@;
-                pop ^ println 0 ==;
+                .@
+                pop ^ println 0 ==
             }
             br {
-                "success" println;
+                "success" println
                 br {
-                    "success message: " print println;
+                    "success message: " print println
                 }
             }
             el {
-                "failure:" println;
+                "failure:" println
                 loop {
-                    "\t" print println;
+                    "\t" print println
                 }
             }
             "#,
-            (expect_stmt, stmt!(Stack Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c"))
-            (expect_stmt, stmt!(Stack Push Ident "$" Pop Nil))
-            (expect_stmt, stmt!(Stack ))
-            (expect_stmt, stmt!(Stack Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)]))
-            (expect_stmt, stmt!(Stack
+            (expect_stmt, stmt!(Stack Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c"
+                    Push Ident "$" Pop Nil
+                    Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)]
                     Push Ident "a"
                     Pop Ident "a"
                     Push Ident "b"
@@ -503,8 +589,8 @@ mod test {
                     Pop Nil
             ))
             (expect_stmt, stmt!(Loop {
-                (Stack Pop Nil)
-                (Stack Push Ident "pop" Push Ident "^" Push Ident "println" Push Int 0 Push Ident "==")
+                (Stack Pop Nil
+                       Push Ident "pop" Push Ident "^" Push Ident "println" Push Int 0 Push Ident "==")
             }))
             (expect_stmt, stmt!(
                 Br {
