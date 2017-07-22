@@ -217,9 +217,9 @@ fn print_o(state: &mut State) -> Result<()> {
 }
 
 fn print_c(state: &mut State) -> Result<()> {
-    let tos = state.pop()?;
-    print!("{}", tos);
-    Ok(())
+	print_o(state)?;
+	state.pop();
+	Ok(())
 }
 
 fn println_o(state: &mut State) -> Result<()> {
@@ -229,7 +229,7 @@ fn println_o(state: &mut State) -> Result<()> {
 }
 
 fn println_c(state: &mut State) -> Result<()> {
-    let tos = state.pop()?;
-    println!("{}", tos);
+    println_o(state)?;
+    state.pop();
     Ok(())
 }
