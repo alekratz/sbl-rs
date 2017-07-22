@@ -1,10 +1,16 @@
+---
 language: rust
 rust:
     - beta
     - stable
     - nightly
+
 matrix:
     allow_failures:
         - rust:
             - nightly
             - beta
+
+before_install:
+    - sudo apt-get -qq update
+    - sudo apt-get install -y texinfo
