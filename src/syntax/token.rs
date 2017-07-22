@@ -37,7 +37,7 @@ lazy_static! {
     };
 
 }
-const IDENT_CHARS: &str = "!@$%^&*-+/=<>abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const IDENT_CHARS: &str = "_!@$%^&|*-+/=<>abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum TokenType {
@@ -287,16 +287,16 @@ impl<'c> Tokenizer<'c> {
                 Ok(())
             }
             else {
-                let expected_list = char_list.split(|_| true)
-                    .map(|c| format!("`{:?}`", c))
+                let expected_list = char_list.chars()
+                    .map(|c| format!("{:?}", c))
                     .collect::<Vec<_>>()
                     .join(", ");
                 Err(format!("expected any of {}; instead got `{:?}`", expected_list, curr).into())
             }
         }
         else {
-            let expected_list = char_list.split(|_| true)
-                .map(|c| format!("`{}`", c))
+            let expected_list = char_list.chars()
+                .map(|c| format!("{:?}", c))
                 .collect::<Vec<_>>()
                 .join(", ");
             Err(format!("expected any of {}; instead got EOF", expected_list).into())

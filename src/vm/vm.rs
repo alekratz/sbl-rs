@@ -137,7 +137,6 @@ impl State {
 
 pub struct VM {
     fun_table: FunTable,
-    foreign_funs: Vec<ForeignFn>,
     state: RefCell<State>,
 }
 
@@ -145,14 +144,13 @@ impl VM {
     pub fn new(fun_table: FunTable) -> Self {
         VM {
             fun_table,
-            foreign_funs: Vec::new(),  // TODO : Fill this in
             state: RefCell::new(State::new()),
         }
     }
 
     pub fn run(&mut self) -> Result<()> {
         // Load all of the foreign functions
-        for f in &self.foreign_funs {
+        for f in self.fun_table.iter().filter_map(|(_, f)| if let &Fun::ForeignFun(ref f) = f as &Fun { Some(f) } else { None }) {
             f.load(&mut self.state.borrow_mut())?;
         }
         self.invoke("main")
@@ -187,7 +185,7 @@ impl VM {
                 let state = self.state.borrow();
                 let fun = state.current_fun();
                 let ref bc = fun.fun.body[fun.pc];
-                (*bc.bc_type(), bc.val_clone())
+                (bc.bc_type, bc.val.clone())
             };
 
             {

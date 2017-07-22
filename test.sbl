@@ -160,4 +160,8 @@ main {
         "   " !print !println
         $ 0 >
     }
+
+    "testing file writing" !println
+    "hello darkness, my old friend" "test.txt" write-string
+    "status: " !print !println
 }

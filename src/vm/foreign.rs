@@ -116,7 +116,7 @@ impl ForeignFn {
                 if fun.is_null() {
                     return Err(format!("could not find symbol `{}` in dynamic library `{}`", &self.name, &self.lib).into());
                 }
-                state.foreign_functions.insert(self.name.clone(), fun);
+                state.foreign_functions.insert(ff_key(&self.lib, &self.name), fun);
             }
         }
         Ok(())

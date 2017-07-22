@@ -13,6 +13,7 @@ lazy_static! {
             "-" => minus,
             "*" => times,
             "/" => divide,
+            "|" => bit_or,
             "==" => equals,
             "!=" => not_equals,
             "<" => less_than,
@@ -82,6 +83,16 @@ fn divide(state: &mut State) -> Result<()> {
     match lhs {
         Val::Int(i1) => if let Val::Int(i2) = rhs { state.push(Val::Int(i1 / i2)); },
         _ => return Err("Division between non-integers is not allowed".into()),
+    }
+    Ok(())
+}
+
+fn bit_or(state: &mut State) -> Result<()> {
+    let rhs = state.pop()?;
+    let lhs = state.pop()?;
+    match lhs {
+        Val::Int(i1) => if let Val::Int(i2) = rhs { state.push(Val::Int(i1 | i2)); },
+        _ => return Err("Bitwise-or between non-integers is not allowed".into()),
     }
     Ok(())
 }

@@ -317,6 +317,7 @@ impl<'c> Parser<'c> {
     }
 
     fn try_item(&mut self) -> Option<Item> {
+        // TODO : backtrack on failure
         if self.can_match_any(Item::lookaheads()) {
             Some(self.expect_item().unwrap())
         }

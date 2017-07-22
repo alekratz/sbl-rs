@@ -112,26 +112,31 @@ pub enum BcType {
     Ret,
 }
 
+impl Display for BcType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}",
+        match self {
+            &BcType::Push => "PUSH",
+            &BcType::PushL => "PUSHL",
+            &BcType::Pop => "POP",
+            &BcType::PopN => "POPN",
+            &BcType::Load => "LOAD",
+            &BcType::JmpZ => "JMPZ",
+            &BcType::Jmp => "JMP",
+            &BcType::Call => "CALL",
+            &BcType::Ret => "RET",
+        })
+    }
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct Bc {
-    bc_type: BcType,
-    tokens: Tokens,
-    val: Option<Val>,
+    pub bc_type: BcType,
+    pub tokens: Tokens,
+    pub val: Option<Val>,
 }
 
 impl Bc {
-    pub fn bc_type(&self) -> &BcType {
-        &self.bc_type
-    }
-
-    pub fn tokens(&self) -> &[RcToken] {
-        &self.tokens
-    }
-
-    pub fn val(&self) -> Option<&Val> {
-        self.val.as_ref()
-    }
-
     pub fn val_clone(&self) -> Option<Val> {
         self.val.clone()
     }
@@ -190,6 +195,12 @@ pub struct UserFun {
 impl UserFun {
     pub fn new(name: String, body: BcBody, tokens: Tokens) -> Self {
         UserFun { name, body, tokens }
+    }
+
+    pub fn dump(&self) {
+        for bc in &self.body {
+            eprintln!("{:6} {}", &bc.bc_type.to_string(), if let Some(ref payload) = bc.val { format!("{:?}", payload) } else { format!("") });
+        }
     }
 }
 
