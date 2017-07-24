@@ -76,7 +76,7 @@ Or, "room for improvement"
 * Lightning-fast virtual machine and compiler implemented in Python
 * No savable bytecode (see [#10](https://github.com/alekratz/sbl-rs/issues/10))
 * No base or standard library (see [#11](https://github.com/alekratz/sbl-rs/issues/11))
-* No FFI (see #7, #9)
+* No FFI (see [#7](https://github.com/alekratz/sbl-rs/issues/7), [#9](https://github.com/alekratz/sbl-rs/issues/9))
 
 # Planned features
 TODO
