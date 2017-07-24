@@ -20,9 +20,10 @@ block = '{' line* '}'
 
 line = action
      | branch
+     | loop
 
-action = '.' ident*
-       | item*
+action = '.' ( ident | nil )
+       | item
 
 branch = <br> block
        | <br> block <el> block
@@ -44,7 +45,9 @@ num = [1-9][0-9]*
     | '0' [xX] [0-9a-fA-F]+
     | '0' [bB] [01]+
 
-ident = [A-z_!@$%^&*-+/]+
+ident = [A-z_!$%^&*-+/]+
+
+nil = '@'
 
 dot = '.'
 
