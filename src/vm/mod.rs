@@ -149,10 +149,6 @@ pub struct Bc {
 }
 
 impl Bc {
-    pub fn val_clone(&self) -> Option<Val> {
-        self.val.clone()
-    }
-
     pub fn push(tokens: Tokens, val: Val) -> Bc {
         Bc {
             bc_type: BcType::Push,

@@ -4,8 +4,7 @@ use vm::{State, Val};
 use libc::{self, RTLD_NOW, c_char};
 use libffi::low::CodePtr;
 use libffi::high::call::{call, Arg};
-use std::ffi::{self, CString};
-use std::os::raw;
+use std::ffi::CString;
 
 #[derive(PartialEq, Clone, Debug)]
 enum FfiVal {

@@ -196,6 +196,7 @@ pub enum StackAction {
     Pop(Tokens, Item),
 }
 
+/*
 impl StackAction {
     pub fn item(&self) -> &Item {
         match self {
@@ -204,6 +205,7 @@ impl StackAction {
         }
     }
 }
+*/
 
 impl ASTNode for StackAction {
     fn lookaheads() -> &'static [TokenType] {
@@ -493,14 +495,6 @@ impl FunDef {
             block,
         }
     }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn block(&self) -> &Block {
-        &self.block
-    }
 }
 
 impl ASTNode for FunDef {
@@ -542,10 +536,6 @@ pub struct Import {
 impl Import {
     pub fn new(tokens: Tokens, path: String) -> Self {
         Import { tokens, path }
-    }
-
-    pub fn path(&self) -> &str {
-        &self.path
     }
 }
 
@@ -675,7 +665,6 @@ impl PartialEq for Foreign {
 }
 
 pub type TopLevelList = Vec<TopLevel>;
-pub type FunDefList = Vec<FunDef>;
 
 /// An unprocessed AST.
 pub struct AST {

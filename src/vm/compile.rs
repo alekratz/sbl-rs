@@ -29,7 +29,7 @@ impl<'ast> Compiler<'ast> {
         self.fill_boring_table()?;
         for top in &self.ast.ast {
             if let &TopLevel::FunDef(ref fun) = top {
-                let fun_name = fun.name().to_string();
+                let fun_name = fun.name.clone();
                 {
                     let fun_entry = self.fun_table.get(&fun_name).expect(
                         "got function with name that was not filled out",
@@ -58,17 +58,6 @@ impl<'ast> Compiler<'ast> {
         )
     }
 
-    fn is_fun_name<S>(&self, name: S) -> bool
-    where
-        String: PartialEq<S>,
-    {
-        self.ast.ast.iter().any(|t| match t {
-            &TopLevel::FunDef(ref f) => f.name == name,
-            &TopLevel::Foreign(ref f) => f.functions.iter().any(|u| u.name == name),
-            _ => false,
-        })
-    }
-
     fn fill_boring_table(&mut self) -> Result<()> {
         // TODO : refactor and de-duplicate
         for top in &self.ast.ast {
@@ -82,7 +71,7 @@ impl<'ast> Compiler<'ast> {
                                 return (Err(
                                     format!(
                                         "function `{}` has already been defined",
-                                        fun.name()
+                                        &fun.name
                                     ).into(),
                                 ) as Result<_>)
                                     .chain_err(|| fun.range());
@@ -90,7 +79,7 @@ impl<'ast> Compiler<'ast> {
                             _ => {}
                         }
                     }
-                    self.fun_table.insert(fun.name().to_string(), None);
+                    self.fun_table.insert(fun.name.clone(), None);
                 }
                 &TopLevel::Foreign(ref foreign) => {
                     for frn_fun in &foreign.functions {

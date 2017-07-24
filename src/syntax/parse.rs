@@ -2,7 +2,6 @@ use errors::*;
 use common::*;
 use syntax::token::*;
 use syntax::ast::*;
-use std::collections::HashMap;
 
 pub struct Parser<'c> {
     tokenizer: Tokenizer<'c>,
