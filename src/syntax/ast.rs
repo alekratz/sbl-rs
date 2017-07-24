@@ -196,7 +196,6 @@ pub enum StackAction {
     Pop(Tokens, Item),
 }
 
-/*
 impl StackAction {
     pub fn item(&self) -> &Item {
         match self {
@@ -205,7 +204,6 @@ impl StackAction {
         }
     }
 }
-*/
 
 impl ASTNode for StackAction {
     fn lookaheads() -> &'static [TokenType] {
