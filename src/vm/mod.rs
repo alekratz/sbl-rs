@@ -11,7 +11,7 @@ use errors::*;
 use syntax::*;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::fmt::{Formatter, Display, self};
+use std::fmt::{self, Formatter, Display};
 use std::cmp::Ordering;
 
 #[derive(EnumGetters, EnumIsA, PartialEq, Clone, Debug)]
@@ -57,8 +57,12 @@ impl Val {
 
         match self {
             &Val::Int(i) => Ok(other.int().cmp(&i)),
-            &Val::Ident(_) | &Val::String(_) | &Val::Bool(_) | &Val::Stack(_) | &Val::Nil =>
-                Err(format!("{} types may not be compared with ordinal operators", self.type_string()).into()),
+            &Val::Ident(_) | &Val::String(_) | &Val::Bool(_) | &Val::Stack(_) | &Val::Nil => Err(
+                format!(
+                    "{} types may not be compared with ordinal operators",
+                    self.type_string()
+                ).into(),
+            ),
             &Val::Char(c) => Ok(other.char().cmp(&c)),
         }
     }
@@ -72,7 +76,13 @@ impl Display for Val {
             &Val::Char(c) => write!(f, "{}", c),
             &Val::String(ref s) => write!(f, "{}", s),
             &Val::Bool(b) => write!(f, "{}", b),
-            &Val::Stack(ref v) => write!(f, "[{}]", v.iter().map(Val::to_string).collect::<Vec<_>>().join(",")),
+            &Val::Stack(ref v) => {
+                write!(
+                    f,
+                    "[{}]",
+                    v.iter().map(Val::to_string).collect::<Vec<_>>().join(",")
+                )
+            }
             &Val::Nil => write!(f, "nil"),
         }
     }
@@ -86,8 +96,7 @@ impl From<Item> for Val {
             ItemType::Char(c) => Val::Char(c),
             ItemType::String(s) => Val::String(s),
             ItemType::Bool(b) => Val::Bool(b),
-            ItemType::Stack(s) =>
-                Val::Stack(s.into_iter().map(Item::into).collect()),
+            ItemType::Stack(s) => Val::Stack(s.into_iter().map(Item::into).collect()),
             ItemType::Nil => Val::Nil,
         }
     }
@@ -114,18 +123,21 @@ pub enum BcType {
 
 impl Display for BcType {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}",
-        match self {
-            &BcType::Push => "PUSH",
-            &BcType::PushL => "PUSHL",
-            &BcType::Pop => "POP",
-            &BcType::PopN => "POPN",
-            &BcType::Load => "LOAD",
-            &BcType::JmpZ => "JMPZ",
-            &BcType::Jmp => "JMP",
-            &BcType::Call => "CALL",
-            &BcType::Ret => "RET",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                &BcType::Push => "PUSH",
+                &BcType::PushL => "PUSHL",
+                &BcType::Pop => "POP",
+                &BcType::PopN => "POPN",
+                &BcType::Load => "LOAD",
+                &BcType::JmpZ => "JMPZ",
+                &BcType::Jmp => "JMP",
+                &BcType::Call => "CALL",
+                &BcType::Ret => "RET",
+            }
+        )
     }
 }
 
@@ -142,44 +154,80 @@ impl Bc {
     }
 
     pub fn push(tokens: Tokens, val: Val) -> Bc {
-        Bc { bc_type: BcType::Push, tokens, val: Some(val) }
+        Bc {
+            bc_type: BcType::Push,
+            tokens,
+            val: Some(val),
+        }
     }
 
     pub fn pushl(tokens: Tokens) -> Bc {
-        Bc { bc_type: BcType::PushL, tokens, val: None }
+        Bc {
+            bc_type: BcType::PushL,
+            tokens,
+            val: None,
+        }
     }
 
     pub fn pop(tokens: Tokens, val: Val) -> Bc {
-        Bc { bc_type: BcType::Pop, tokens, val: Some(val) }
+        Bc {
+            bc_type: BcType::Pop,
+            tokens,
+            val: Some(val),
+        }
     }
 
     pub fn popn(tokens: Tokens, val: Val) -> Bc {
         assert_matches!(val, Val::Int(_));
-        Bc { bc_type: BcType::PopN, tokens, val: Some(val) }
+        Bc {
+            bc_type: BcType::PopN,
+            tokens,
+            val: Some(val),
+        }
     }
 
     pub fn load(tokens: Tokens, val: Val) -> Bc {
         assert_matches!(val, Val::Ident(_));
-        Bc { bc_type: BcType::Load, tokens, val: Some(val) }
+        Bc {
+            bc_type: BcType::Load,
+            tokens,
+            val: Some(val),
+        }
     }
 
     pub fn jmpz(tokens: Tokens, val: Val) -> Bc {
         assert_matches!(val, Val::Int(_));
-        Bc { bc_type: BcType::JmpZ, tokens, val: Some(val) }
+        Bc {
+            bc_type: BcType::JmpZ,
+            tokens,
+            val: Some(val),
+        }
     }
-    
+
     pub fn jmp(tokens: Tokens, val: Val) -> Bc {
         assert_matches!(val, Val::Int(_));
-        Bc { bc_type: BcType::Jmp, tokens, val: Some(val) }
+        Bc {
+            bc_type: BcType::Jmp,
+            tokens,
+            val: Some(val),
+        }
     }
 
     pub fn call(tokens: Tokens, val: Val) -> Bc {
         assert_matches!(val, Val::Ident(_));
-        Bc { bc_type: BcType::Call, tokens, val: Some(val) }
+        Bc {
+            bc_type: BcType::Call,
+            tokens,
+            val: Some(val),
+        }
     }
 
     pub fn ret(tokens: Tokens) -> Bc {
-        Bc { bc_type: BcType::Ret, tokens, val: None }
+        Bc {
+            bc_type: BcType::Ret,
+            tokens,
+            val: None,
+        }
     }
 }
 
@@ -199,7 +247,8 @@ impl UserFun {
 
     pub fn dump(&self) {
         for bc in &self.body {
-            eprintln!("{:6} {}", &bc.bc_type.to_string(), if let Some(ref payload) = bc.val { format!("{:?}", payload) } else { format!("") });
+            eprintln!("{:6} {}", &bc.bc_type.to_string(),
+                if let Some(ref payload) = bc.val { format!("{:?}", payload) } else { format!("") });
         }
     }
 }

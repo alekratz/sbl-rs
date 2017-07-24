@@ -30,12 +30,12 @@ impl<'c> Parser<'c> {
             if top_level.is_err() {
                 // get the range of the most recent token
                 let ref tokenizer = self.tokenizer;
-                let curr_range = self.curr.as_ref()
-                    .map(Token::range)
-                    .unwrap_or(Range::eof(tokenizer.source_path(), tokenizer.source_text()));
+                let curr_range = self.curr.as_ref().map(Token::range).unwrap_or(Range::eof(
+                    tokenizer.source_path(),
+                    tokenizer.source_text(),
+                ));
                 top_level.chain_err(|| curr_range)?;
-            }
-            else {
+            } else {
                 ast.push(top_level.unwrap())
             }
         }
@@ -49,30 +49,45 @@ impl<'c> Parser<'c> {
         if curr.token_type() == token_type {
             self.next_token()?;
             Ok(curr)
-        }
-        else {
-            Err(format!("expected token type `{}`; got `{}` instead", token_type, curr.token_type()).into())
+        } else {
+            Err(
+                format!(
+                    "expected token type `{}`; got `{}` instead",
+                    token_type,
+                    curr.token_type()
+                ).into(),
+            )
         }
     }
 
     fn match_any(&mut self, token_types: &[TokenType]) -> Result<Token> {
         let curr = self.expect_curr()
-            .chain_err(|| format!("expected any token of type {}",
-                                  token_types.iter()  // this ugly biz just makes prettier expected token types
+            .chain_err(|| {
+                format!(
+                    "expected any token of type {}",
+                    token_types.iter()  // this ugly biz just makes prettier expected token types
                                       .map(|t| format!("`{}`", t))
                                       .collect::<Vec<_>>()
-                                      .join(", "))
-                       )?.clone();
+                                      .join(", ")
+                )
+            })?
+            .clone();
         if token_types.contains(&curr.token_type()) {
             self.next_token()?;
             Ok(curr)
-        }
-        else {
-            let expected_types = token_types.iter()
+        } else {
+            let expected_types = token_types
+                .iter()
                 .map(|t| format!("`{}`", t))
                 .collect::<Vec<_>>()
                 .join(", ");
-            Err(format!("expected any token of {}; got `{}` instead", expected_types, curr.token_type()).into())
+            Err(
+                format!(
+                    "expected any token of {}; got `{}` instead",
+                    expected_types,
+                    curr.token_type()
+                ).into(),
+            )
         }
     }
 
@@ -86,9 +101,7 @@ impl<'c> Parser<'c> {
     fn can_match_any(&self, token_types: &[TokenType]) -> bool {
         let result = self.curr
             .as_ref()
-            .map(|t| {
-                token_types.contains(&t.token_type())
-            })
+            .map(|t| token_types.contains(&t.token_type()))
             .unwrap_or(false);
         result
     }
@@ -96,14 +109,13 @@ impl<'c> Parser<'c> {
     fn expect_curr(&self) -> Result<&Token> {
         if let Some(ref curr) = self.curr {
             Ok(curr)
-        }
-        else {
+        } else {
             Err("unexpected EOF".into())
         }
     }
 
     fn next_token(&mut self) -> Result<()> {
-        loop { 
+        loop {
             if let Some(result) = self.tokenizer.next() {
                 let result = result?;
                 // skip comments
@@ -111,8 +123,7 @@ impl<'c> Parser<'c> {
                     self.curr = Some(result);
                     break;
                 }
-            }
-            else {
+            } else {
                 self.curr = None;
                 break;
             }
@@ -125,16 +136,14 @@ impl<'c> Parser<'c> {
      */
     fn expect_top_level(&mut self) -> Result<TopLevel> {
         if self.can_match_any(Import::lookaheads()) {
-            Ok(TopLevel::Import(self.expect_import()
-                                .chain_err(|| "while parsing import statement")?))
-        } 
-        else if self.can_match_any(FunDef::lookaheads()) {
+            Ok(TopLevel::Import(self.expect_import().chain_err(
+                || "while parsing import statement",
+            )?))
+        } else if self.can_match_any(FunDef::lookaheads()) {
             Ok(TopLevel::FunDef(self.expect_fun()?))
-        }
-        else if self.can_match_any(Foreign::lookaheads()) {
+        } else if self.can_match_any(Foreign::lookaheads()) {
             Ok(TopLevel::Foreign(self.expect_foreign()?))
-        }
-        else {
+        } else {
             let mut all = vec![];
             all.extend_from_slice(FunDef::lookaheads());
             all.extend_from_slice(Import::lookaheads());
@@ -188,8 +197,11 @@ impl<'c> Parser<'c> {
         let name_token = self.match_token(TokenType::Ident)?;
         let name = String::from(name_token.as_str());
 
-        let mut tokens = vec![return_type_token.into_rc(), name_token.into_rc(), 
-            self.match_token(TokenType::LBrack)?.into_rc()];
+        let mut tokens = vec![
+            return_type_token.into_rc(),
+            name_token.into_rc(),
+            self.match_token(TokenType::LBrack)?.into_rc(),
+        ];
         let mut params = vec![];
         // go through all of the types
         while !self.can_match_token(TokenType::RBrack) && self.curr.is_some() {
@@ -198,14 +210,21 @@ impl<'c> Parser<'c> {
             tokens.push(param_token.into_rc());
         }
         tokens.push(self.match_token(TokenType::RBrack)?.into_rc());
-        Ok(ForeignFn::new(tokens, name, lib.to_string(), params, return_type))
+        Ok(ForeignFn::new(
+            tokens,
+            name,
+            lib.to_string(),
+            params,
+            return_type,
+        ))
     }
 
     fn expect_fun(&mut self) -> Result<FunDef> {
         let mut tokens = vec![self.match_any(FunDef::lookaheads())?.into_rc()];
         let name = tokens[0].as_str().to_string();
-        let block = self.expect_block()
-            .chain_err(|| format!("while parsing function `{}`", name))?;
+        let block = self.expect_block().chain_err(|| {
+            format!("while parsing function `{}`", name)
+        })?;
         tokens.append_node(&block);
         Ok(FunDef::new(tokens, name, block))
     }
@@ -213,14 +232,11 @@ impl<'c> Parser<'c> {
     fn expect_stmt(&mut self) -> Result<Stmt> {
         if self.can_match_any(BrStmt::lookaheads()) {
             Ok(Stmt::Br(self.expect_br_stmt()?))
-        }
-        else if self.can_match_any(LoopStmt::lookaheads()) {
+        } else if self.can_match_any(LoopStmt::lookaheads()) {
             Ok(Stmt::Loop(self.expect_loop_stmt()?))
-        }
-        else if self.can_match_any(StackStmt::lookaheads()) {
+        } else if self.can_match_any(StackStmt::lookaheads()) {
             Ok(Stmt::Stack(self.expect_stack_stmt()?))
-        }
-        else {
+        } else {
             self.match_any(Stmt::lookaheads())?;
             unreachable!()
         }
@@ -234,8 +250,7 @@ impl<'c> Parser<'c> {
             tokens.append_node(&stmt);
             block.push(stmt);
         }
-        tokens.push(
-            self.match_token(TokenType::RBrace)?.into_rc());
+        tokens.push(self.match_token(TokenType::RBrace)?.into_rc());
         Ok(Block::new(tokens, block))
     }
 
@@ -254,8 +269,7 @@ impl<'c> Parser<'c> {
             let el_stmt = self.expect_el_stmt()?;
             tokens.append_node(&el_stmt);
             Some(el_stmt)
-        }
-        else {
+        } else {
             None
         };
         Ok(BrStmt::new(tokens, block, el_stmt))
@@ -271,12 +285,12 @@ impl<'c> Parser<'c> {
     fn expect_stack_stmt(&mut self) -> Result<StackStmt> {
         let mut tokens = vec![];
         let mut actions = vec![];
-        while !self.can_match_any(&[TokenType::RBrace, TokenType::KwBr, TokenType::KwLoop]) && self.curr.is_some() {
+        while !self.can_match_any(&[TokenType::RBrace, TokenType::KwBr, TokenType::KwLoop]) &&
+            self.curr.is_some()
+        {
             let action = if tokens.len() > 0 {
-                self.expect_stack_action()
-                    .chain_err(|| tokens.range())
-            }
-            else {
+                self.expect_stack_action().chain_err(|| tokens.range())
+            } else {
                 self.expect_stack_action()
             }?;
             tokens.append_node(&action);
@@ -288,8 +302,7 @@ impl<'c> Parser<'c> {
     fn expect_stack_action(&mut self) -> Result<StackAction> {
         if let Some(item) = self.try_item() {
             Ok(StackAction::Push(item))
-        }
-        else {
+        } else {
             let mut tokens = vec![self.match_any(StackAction::lookaheads())?.into_rc()];
             let item = self.expect_item()?;
             tokens.append_node(&item);
@@ -311,7 +324,7 @@ impl<'c> Parser<'c> {
                 }
                 tokens.push(self.match_token(TokenType::RBrack)?.into_rc());
                 Ok(Item::new(tokens, ItemType::Stack(items)))
-            },
+            }
             _ => Ok(token.into()),
         }
     }
@@ -320,8 +333,7 @@ impl<'c> Parser<'c> {
         // TODO : backtrack on failure
         if self.can_match_any(Item::lookaheads()) {
             Some(self.expect_item().unwrap())
-        }
-        else {
+        } else {
             None
         }
     }
@@ -478,11 +490,11 @@ mod test {
             foo {
                 1 2 3 .a .b .c
                 $ .@
-                @ [1 2 3 4 5] 
+                @ [1 2 3 4 5]
             }
 
             main {
-                a .a b .foo c .bar d .x e .2 f .@ 
+                a .a b .foo c .bar d .x e .2 f .@
                 loop {
                     .@
                     pop ^ println 0 ==
@@ -553,9 +565,9 @@ mod test {
             r#"
             1 2 3 .a .b .c
             $ .@
-            
-            @ [1 2 3 4 5] 
-            a .a b .foo c .bar d .x e .2 f .@ 
+
+            @ [1 2 3 4 5]
+            a .a b .foo c .bar d .x e .2 f .@
             loop {
                 .@
                 pop ^ println 0 ==

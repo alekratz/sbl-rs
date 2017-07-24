@@ -2,18 +2,23 @@ use errors::*;
 use syntax::{AST, Tokenizer, Parser};
 use error_chain::ChainedError;
 use std::sync::Arc;
-use std::fmt::{Formatter, Debug, Display, self};
+use std::fmt::{self, Formatter, Debug, Display};
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::io::{Read, self};
+use std::io::{self, Read};
 use std::cmp::Ordering;
 
 pub type RcStr = Arc<String>;
 
 /// Identity function.
-pub fn id<T>(x: T) -> T { x }
+pub fn id<T>(x: T) -> T {
+    x
+}
 
-pub fn search_path<P: AsRef<Path>, Q: AsRef<Path>>(filename: P, search_dirs: &[Q]) -> Option<PathBuf> {
+pub fn search_path<P: AsRef<Path>, Q: AsRef<Path>>(
+    filename: P,
+    search_dirs: &[Q],
+) -> Option<PathBuf> {
     for p in search_dirs {
         let mut path_buf = PathBuf::from(p.as_ref());
         path_buf.push(&filename);
@@ -35,17 +40,25 @@ pub fn read_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
 }
 
 /// Processes the contents of a file to a filled AST.
-pub fn process_source_path<P: AsRef<Path>, Q: AsRef<Path>>(path: P, search_dirs: &[Q]) -> Result<AST> {
+pub fn process_source_path<P: AsRef<Path>, Q: AsRef<Path>>(
+    path: P,
+    search_dirs: &[Q],
+) -> Result<AST> {
     let contents = match read_file(&path) {
         Ok(c) => c,
         Err(e) => {
-            return Err(format!("error reading `{}`: {}", path.as_ref().display(), e).into());
+            return Err(
+                format!("error reading `{}`: {}", path.as_ref().display(), e).into(),
+            );
         }
     };
     // set up tokenizer and parser
     let tokenizer = Tokenizer::new(path.as_ref().to_str().unwrap(), &contents);
     let mut parser = Parser::new(tokenizer);
-    let ast = AST { ast: parser.parse()?, path: path.as_ref().display().to_string() };
+    let ast = AST {
+        ast: parser.parse()?,
+        path: path.as_ref().display().to_string(),
+    };
     ast.preprocess(search_dirs)
 }
 
@@ -55,7 +68,7 @@ pub fn print_error_chain<T: ChainedError>(err_chain: T) {
     for err in err_chain.iter().skip(1) {
         eprintln!("... {}", err);
     }
-    
+
     let mut ranges = err_chain.iter()
         // XXX : ugly hack to mark ranged errors
         // see https://github.com/rust-lang/rust/issues/35943 for details
@@ -65,7 +78,10 @@ pub fn print_error_chain<T: ChainedError>(err_chain: T) {
         .collect::<Vec<_>>();
     if !ranges.is_empty() {
         ranges.sort_by(|a, b| a.start.cmp(&b.start));
-        let range = Range::new(ranges.first().unwrap().start.clone(), ranges.last().unwrap().end.clone());
+        let range = Range::new(
+            ranges.first().unwrap().start.clone(),
+            ranges.last().unwrap().end.clone(),
+        );
         eprintln!();
         print_range_underline(range);
     }
@@ -75,36 +91,60 @@ pub fn print_error_chain<T: ChainedError>(err_chain: T) {
 pub fn print_range_underline(range: Range) {
     const MAX_LINES: usize = 4;
     let source_text = range.source_text();
-    let lines = source_text.split('\n')
-        .collect::<Vec<_>>();
+    let lines = source_text.split('\n').collect::<Vec<_>>();
     assert!(range.start.line_index < lines.len() as isize);
     assert!(range.end.line_index < lines.len() as isize);
     eprintln!("    {}:", range);
     let start_index = range.start.line_index as usize;
     let end_index = range.end.line_index as usize;
     if start_index == end_index {
-        print_error_line(lines[start_index], start_index as isize,
-                         range.start.col_index, range.end.col_index);
-    }
-    else if (end_index - start_index) > MAX_LINES {
-        print_error_line(lines[start_index], start_index as isize,
-                         range.start.col_index, lines[start_index].len() as isize);
+        print_error_line(
+            lines[start_index],
+            start_index as isize,
+            range.start.col_index,
+            range.end.col_index,
+        );
+    } else if (end_index - start_index) > MAX_LINES {
+        print_error_line(
+            lines[start_index],
+            start_index as isize,
+            range.start.col_index,
+            lines[start_index].len() as isize,
+        );
 
-        for idx in start_index + 1 .. start_index + (MAX_LINES / 2) {
-            print_error_line(lines[idx], idx as isize, 0, lines[idx as usize].len() as isize);
+        for idx in start_index + 1..start_index + (MAX_LINES / 2) {
+            print_error_line(
+                lines[idx],
+                idx as isize,
+                0,
+                lines[idx as usize].len() as isize,
+            );
         }
 
         eprintln!("<{} lines omitted>", end_index - start_index - MAX_LINES);
 
-        for idx in end_index - (MAX_LINES / 2) + 1 .. end_index + 1 {
-            print_error_line(lines[idx], idx as isize, 0, lines[idx as usize].len() as isize);
+        for idx in end_index - (MAX_LINES / 2) + 1..end_index + 1 {
+            print_error_line(
+                lines[idx],
+                idx as isize,
+                0,
+                lines[idx as usize].len() as isize,
+            );
         }
-    }
-    else {
-        print_error_line(lines[start_index], start_index as isize,
-                         range.start.col_index, lines[start_index].len() as isize);
-        for idx in range.start.line_index + 1 .. range.end.line_index + 1 {
-            print_error_line(lines[idx as usize], idx, 0, lines[idx as usize].len() as isize);
+    } else {
+        print_error_line(
+            lines[start_index],
+            start_index as isize,
+            range.start.col_index,
+            lines[start_index].len() as isize,
+        );
+        for idx in range.start.line_index + 1..range.end.line_index + 1 {
+            print_error_line(
+                lines[idx as usize],
+                idx,
+                0,
+                lines[idx as usize].len() as isize,
+            );
         }
     }
 }
@@ -115,27 +155,22 @@ fn print_error_line(line: &str, line_index: isize, start: isize, end: isize) {
     const INDENT: usize = 8;
     const MAX_LEN: usize = 72;
     const LINE_NUMBER_WIDTH: usize = 4;
-    let elipses = if line.len() > MAX_LEN {
-        "..."
-    }
-    else { "" };
-    let line_offset = line.find(|c: char| c != ' ' && c != '\t')
-        .unwrap_or(0);
-    let line = line.trim()
-        .chars()
-        .take(MAX_LEN)
-        .collect::<String>(); 
+    let elipses = if line.len() > MAX_LEN { "..." } else { "" };
+    let line_offset = line.find(|c: char| c != ' ' && c != '\t').unwrap_or(0);
+    let line = line.trim().chars().take(MAX_LEN).collect::<String>();
     // for now, we're just underlining the first line
     // strip the initial whitespace, and indent by 4 plus the line number
-    eprintln!("{1: >0$}{2}{3}{4}",
-              LINE_NUMBER_WIDTH,
-              line_index + 1,
-              " ".repeat(INDENT),
-              line,
-              elipses);
+    eprintln!(
+        "{1: >0$}{2}{3}{4}",
+        LINE_NUMBER_WIDTH,
+        line_index + 1,
+        " ".repeat(INDENT),
+        line,
+        elipses
+    );
     // figure out where to start and end. if we're on the same line, just use the
     // start and end of the range. if we're on different lines, start at the start
-    // and end at the end of the line. 
+    // and end at the end of the line.
     let len = end - start;
     /*
     let start = start
@@ -150,9 +185,11 @@ fn print_error_line(line: &str, line_index: isize, start: isize, end: isize) {
             + INDENT as isize;
     */
     if len > 0 {
-        eprintln!("{}{}",
-              " ".repeat(LINE_NUMBER_WIDTH + INDENT),
-              "^".repeat(len as usize));
+        eprintln!(
+            "{}{}",
+            " ".repeat(LINE_NUMBER_WIDTH + INDENT),
+            "^".repeat(len as usize)
+        );
     }
 }
 
@@ -214,11 +251,15 @@ impl Pos {
 }
 
 impl PartialOrd for Pos {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { self.src_index.partial_cmp(&other.src_index) }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.src_index.partial_cmp(&other.src_index)
+    }
 }
 
 impl Ord for Pos {
-    fn cmp(&self, other: &Self) -> Ordering { self.src_index.cmp(&other.src_index) }
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.src_index.cmp(&other.src_index)
+    }
 }
 
 impl Display for Pos {
@@ -229,8 +270,13 @@ impl Display for Pos {
 
 impl Debug for Pos {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "Pos {{ src_index: {:?} line_index: {:?} col_index: {:?} }}",
-               self.src_index, self.line_index, self.col_index)
+        write!(
+            f,
+            "Pos {{ src_index: {:?} line_index: {:?} col_index: {:?} }}",
+            self.src_index,
+            self.line_index,
+            self.col_index
+        )
     }
 }
 
@@ -290,13 +336,11 @@ impl Range {
     }
 
     pub fn source_path(&self) -> RcStr {
-        self.start.source_path
-            .clone()
+        self.start.source_path.clone()
     }
 
     pub fn source_text(&self) -> RcStr {
-        self.start.source_text
-            .clone()
+        self.start.source_text.clone()
     }
 }
 
@@ -304,12 +348,22 @@ impl Display for Range {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         if self.start == self.end {
             write!(f, "`{}` at {}", self.start.source_path, self.start)
-        }
-        else if self.start.line_index == self.end.line_index {
-            write!(f, "`{}` at {}-{}", self.start.source_path, self.start, self.end.col_index + 1)
-        }
-        else {
-            write!(f, "`{}` at {}-{}", self.start.source_path, self.start, self.end)
+        } else if self.start.line_index == self.end.line_index {
+            write!(
+                f,
+                "`{}` at {}-{}",
+                self.start.source_path,
+                self.start,
+                self.end.col_index + 1
+            )
+        } else {
+            write!(
+                f,
+                "`{}` at {}-{}",
+                self.start.source_path,
+                self.start,
+                self.end
+            )
         }
     }
 }

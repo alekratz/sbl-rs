@@ -16,9 +16,10 @@ impl FunState {
     pub fn load(&self, name: &str) -> Result<&Val> {
         if let Some(ref val) = self.locals.get(name) {
             Ok(val)
-        }
-        else {
-            Err(format!("attempted to load unassigned local variable `{}`", name).into())
+        } else {
+            Err(
+                format!("attempted to load unassigned local variable `{}`", name).into(),
+            )
         }
     }
 
@@ -67,8 +68,7 @@ impl State {
     pub fn peek(&self) -> Result<&Val> {
         if let Some(val) = self.stack.last() {
             Ok(val)
-        }
-        else {
+        } else {
             Err("attempted to look at the top of an empty stack".into())
         }
     }
@@ -80,8 +80,7 @@ impl State {
     pub fn pop(&mut self) -> Result<Val> {
         if let Some(val) = self.stack.pop() {
             Ok(val)
-        }
-        else {
+        } else {
             Err("attempted to pop an empty stack".into())
         }
     }
@@ -89,27 +88,35 @@ impl State {
     pub fn popn(&mut self, n: i64) -> Result<()> {
         let len = self.stack.len();
         if n < 0 {
-            return Err(format!("atetmpted to pop a negative number of items off of the stack (got {})", n).into());
+            return Err(
+                format!(
+                    "atetmpted to pop a negative number of items off of the stack (got {})",
+                    n
+                ).into(),
+            );
         }
 
         let n = n as usize;
         if n > len {
-            Err(format!("attempted to pop {} items off of a stack with only {} items", n, len).into())
-        }
-        else {
+            Err(
+                format!(
+                    "attempted to pop {} items off of a stack with only {} items",
+                    n,
+                    len
+                ).into(),
+            )
+        } else {
             self.stack.truncate(len - n);
             Ok(())
         }
     }
 
     pub fn current_fun(&self) -> &FunState {
-        self.call_stack.last()
-            .unwrap()
+        self.call_stack.last().unwrap()
     }
 
     pub fn current_fun_mut(&mut self) -> &mut FunState {
-        self.call_stack.last_mut()
-            .unwrap()
+        self.call_stack.last_mut().unwrap()
     }
 
     pub fn push_fun(&mut self, fun_state: FunState) {
@@ -150,7 +157,14 @@ impl VM {
 
     pub fn run(&mut self) -> Result<()> {
         // Load all of the foreign functions
-        for f in self.fun_table.iter().filter_map(|(_, f)| if let &Fun::ForeignFun(ref f) = f as &Fun { Some(f) } else { None }) {
+        for f in self.fun_table.iter().filter_map(|(_, f)| {
+            if let &Fun::ForeignFun(ref f) = f as &Fun {
+                Some(f)
+            } else {
+                None
+            }
+        })
+        {
             f.load(&mut self.state.borrow_mut())?;
         }
         self.invoke("main")
@@ -159,7 +173,10 @@ impl VM {
     fn invoke(&mut self, fun_name: &str) -> Result<()> {
         let fun = self.fun_table
             .get(fun_name)
-            .expect(&format!("expected function `{}` but none was found; compiler should have caught this", fun_name))
+            .expect(&format!(
+                "expected function `{}` but none was found; compiler should have caught this",
+                fun_name
+            ))
             .clone();
         match &fun as &Fun {
             &Fun::UserFun(ref fun) => {
@@ -173,7 +190,7 @@ impl VM {
                     state.pop_fun();
                 }
                 Ok(())
-            },
+            }
             &Fun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
             &Fun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
         }
@@ -194,76 +211,74 @@ impl VM {
                         let mut state = self.state.borrow_mut();
                         state.push(val.unwrap());
                         state.increment_pc();
-                    },
+                    }
                     BcType::PushL => {
                         let mut state = self.state.borrow_mut();
                         let item = state.pop()?;
                         let mut stack = state.pop()?;
                         if let Val::Stack(ref mut st) = stack {
                             st.push(item);
-                        }
-                        else {
+                        } else {
                             // This should - for now - never occur
                             unreachable!();
                         }
                         state.push(stack);
                         state.increment_pc();
-                    },
+                    }
                     BcType::Pop => {
                         let mut state = self.state.borrow_mut();
                         let tos = state.pop()?;
                         let val = val.unwrap();
                         match val {
                             Val::Ident(ident) => state.store(ident, tos),
-                            Val::Nil => { /* do nothing */ },
+                            Val::Nil => { /* do nothing */ }
                             _ => unreachable!(),
                         }
                         state.increment_pc();
-                    },
+                    }
                     BcType::PopN => {
                         let mut state = self.state.borrow_mut();
                         let i = val.unwrap().int();
                         state.popn(i)?;
                         state.increment_pc();
-                    },
+                    }
                     BcType::Load => {
                         let mut state = self.state.borrow_mut();
                         let val = val.unwrap();
                         let ident = val.ident();
-                        let val = state.load(&ident)?
-                            .clone();
+                        let val = state.load(&ident)?.clone();
                         state.push(val);
                         state.increment_pc();
-                    },
+                    }
                     BcType::JmpZ => {
                         let mut state = self.state.borrow_mut();
                         let jump_taken = {
                             let tos = state.peek()?;
                             match tos {
-                                &Val::Bool(false) | &Val::Nil => true,
+                                &Val::Bool(false) |
+                                &Val::Nil => true,
                                 _ => false,
                             }
                         };
                         if jump_taken {
                             let addr = val.unwrap().int() as usize;
                             state.set_pc(addr);
-                        }
-                        else {
+                        } else {
                             state.increment_pc();
                         }
-                    },
+                    }
                     BcType::Jmp => {
                         let mut state = self.state.borrow_mut();
                         let addr = val.unwrap().int() as usize;
                         state.set_pc(addr);
-                    },
+                    }
                     BcType::Call => {
                         let val = val.unwrap();
                         let fun_name = val.ident();
                         self.invoke(fun_name)?;
                         let mut state = self.state.borrow_mut();
                         state.increment_pc();
-                    },
+                    }
                     BcType::Ret => break,
                 }
             }

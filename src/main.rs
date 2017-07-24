@@ -29,7 +29,7 @@ mod errors {
             }
         }
     }
-    
+
     impl From<Range> for ErrorKind {
         fn from(r: Range) -> ErrorKind {
             ErrorKind::Ranged(r)
@@ -44,14 +44,27 @@ use std::process;
 use std::env;
 use std::path::Path;
 
-fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(path: P, dump: bool, search_dirs: &[Q]) -> Result<()> {
-    let filled_ast = process_source_path(path, search_dirs)
-        .chain_err(|| "Parse error")?;
+fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
+    path: P,
+    dump: bool,
+    search_dirs: &[Q],
+) -> Result<()> {
+    let filled_ast = process_source_path(path, search_dirs).chain_err(
+        || "Parse error",
+    )?;
     let compiler = Compiler::new(&filled_ast);
-    let fun_table = compiler.compile()
-        .chain_err(|| "Compile error")?;
+    let fun_table = compiler.compile().chain_err(|| "Compile error")?;
     if dump {
-        for f in fun_table.iter().filter_map(|(_, f)| if let &Fun::UserFun(ref f) = f as &Fun { Some(f) } else { None }) {
+        for f in fun_table.iter().filter_map(
+            |(_, f)| if let &Fun::UserFun(ref f) =
+                f as &Fun
+            {
+                Some(f)
+            } else {
+                None
+            },
+        )
+        {
             eprintln!("- {} {}", &f.name, "-".repeat(69 - f.name.len()));
             f.dump();
         }
@@ -70,14 +83,12 @@ fn main() {
         (@arg ARGV: +last ... "Any arguments to pass to the input file.")
     ).get_matches();
 
-    let path = matches.value_of("INPUT")
-        .unwrap();
+    let path = matches.value_of("INPUT").unwrap();
 
     let dump = matches.is_present("DUMP");
 
     let search_dirs = match env::var("SBL_PATH") {
-        Ok(p) => env::split_paths(&format!(".:{}", p))
-            .collect::<Vec<_>>(),
+        Ok(p) => env::split_paths(&format!(".:{}", p)).collect::<Vec<_>>(),
         _ => vec![],
     };
 

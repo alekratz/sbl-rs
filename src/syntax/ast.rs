@@ -1,7 +1,7 @@
 use common::*;
 use syntax::token::*;
 #[cfg(test)]
-use std::fmt::{Formatter, Debug, self};
+use std::fmt::{self, Formatter, Debug};
 
 pub type Tokens = Vec<RcToken>;
 
@@ -29,14 +29,8 @@ pub trait ASTNode {
     fn tokens(&self) -> &[RcToken];
     fn range(&self) -> Range {
         let tokens = self.tokens();
-        let start = tokens.first()
-            .unwrap()
-            .range()
-            .start;
-        let end = tokens.last()
-            .unwrap()
-            .range()
-            .end;
+        let start = tokens.first().unwrap().range().start;
+        let end = tokens.last().unwrap().range().end;
         Range { start, end }
     }
 }
@@ -112,7 +106,7 @@ pub struct Item {
 
 impl Item {
     pub fn new(tokens: Tokens, item_type: ItemType) -> Self {
-        Item { tokens, item_type, }
+        Item { tokens, item_type }
     }
 
     pub fn is_const(&self) -> bool {
@@ -140,8 +134,7 @@ impl Debug for Item {
 
 impl ASTNode for Item {
     fn tokens(&self) -> &[RcToken] {
-        self.tokens
-            .as_slice()
+        self.tokens.as_slice()
     }
 
     fn lookaheads() -> &'static [TokenType] {
@@ -153,24 +146,41 @@ impl ASTNode for Item {
 
 impl From<Token> for Item {
     fn from(other: Token) -> Item {
-        let other_str = other.as_str()
-            .to_string();
+        let other_str = other.as_str().to_string();
         match other.token_type() {
-            TokenType::Int => Item::new(vec![other.into_rc()], ItemType::Int(other_str.parse().unwrap())),
-            TokenType::Ident => Item::new(vec![other.into_rc()], ItemType::Ident(other_str.to_string())),
+            TokenType::Int => {
+                Item::new(
+                    vec![other.into_rc()],
+                    ItemType::Int(other_str.parse().unwrap()),
+                )
+            }
+            TokenType::Ident => {
+                Item::new(
+                    vec![other.into_rc()],
+                    ItemType::Ident(other_str.to_string()),
+                )
+            }
             TokenType::Char => {
                 let char_str = other.unescape();
                 assert_eq!(char_str.len(), 1);
-                Item::new(vec![other.into_rc()], ItemType::Char(char_str.chars().nth(0).unwrap()))
-            },
-            TokenType::String =>{
+                Item::new(
+                    vec![other.into_rc()],
+                    ItemType::Char(char_str.chars().nth(0).unwrap()),
+                )
+            }
+            TokenType::String => {
                 let escaped = other.unescape();
                 Item::new(vec![other.into_rc()], ItemType::String(escaped))
-            },
+            }
             TokenType::KwT => Item::new(vec![other.into_rc()], ItemType::Bool(true)),
             TokenType::KwF => Item::new(vec![other.into_rc()], ItemType::Bool(false)),
             TokenType::KwNil => Item::new(vec![other.into_rc()], ItemType::Nil),
-            _ => panic!("Token of type `{:?}` is incompatible to turn into an Item", other.token_type()),
+            _ => {
+                panic!(
+                    "Token of type `{:?}` is incompatible to turn into an Item",
+                    other.token_type()
+                )
+            }
         }
     }
 }
@@ -212,10 +222,11 @@ impl ASTNode for StackAction {
 impl PartialEq for StackAction {
     fn eq(&self, other: &Self) -> bool {
         use self::StackAction::*;
-        (self.item() == other.item()) && match *self {
-            Push(_) => other.is_push(),
-            Pop(_, _) => other.is_pop(),
-        } 
+        (self.item() == other.item()) &&
+            match *self {
+                Push(_) => other.is_push(),
+                Pop(_, _) => other.is_pop(),
+            }
     }
 }
 
@@ -224,7 +235,7 @@ impl Debug for StackAction {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             &StackAction::Push(_) => write!(f, "Push {{ {:?} }}", self.item()),
-            &StackAction::Pop(_, _) => write!(f, "Pop {{ {:?} }}", self.item())
+            &StackAction::Pop(_, _) => write!(f, "Pop {{ {:?} }}", self.item()),
         }
     }
 }
@@ -260,9 +271,27 @@ impl PartialEq for Stmt {
     fn eq(&self, other: &Self) -> bool {
         use self::Stmt::*;
         match self {
-            &Stack(ref s) => if let &Stack(ref o) = other { s == o } else { false },
-            &Br(ref s) => if let &Br(ref o) = other { s == o } else { false },
-            &Loop(ref s) => if let &Loop(ref o) = other { s == o } else { false },
+            &Stack(ref s) => {
+                if let &Stack(ref o) = other {
+                    s == o
+                } else {
+                    false
+                }
+            }
+            &Br(ref s) => {
+                if let &Br(ref o) = other {
+                    s == o
+                } else {
+                    false
+                }
+            }
+            &Loop(ref s) => {
+                if let &Loop(ref o) = other {
+                    s == o
+                } else {
+                    false
+                }
+            }
         }
     }
 }
@@ -273,7 +302,8 @@ macro_rules! from_stmt {
             fn from(stmt: Stmt) -> Self {
                 match stmt {
                     Stmt::$rule(s) => s,
-                    _ => panic!(format!(concat!("called ", stringify!($name), "::from() for mismatched Stmt ({:?})"), stmt)),
+                    _ => panic!(format!(concat!("called ", stringify!($name), "::from() for mismatched Stmt ({:?})"),
+                            stmt)),
                 }
             }
         }
@@ -303,7 +333,7 @@ pub struct StackStmt {
     pub stack_actions: Vec<StackAction>,
 }
 
-impl StackStmt  {
+impl StackStmt {
     pub fn new(tokens: Tokens, stack_actions: Vec<StackAction>) -> Self {
         StackStmt {
             tokens,
@@ -340,7 +370,7 @@ impl Debug for StackStmt {
 // Block statements
 //
 
-macro_rules! block_stmt { 
+macro_rules! block_stmt {
     (@ $name:ident new => ($($param:ident : $type:ty ),*) $($tail:tt)* ) => {
         impl $name {
             pub fn new(tokens: Tokens $( , $param: $type )*) -> Self {
@@ -376,7 +406,7 @@ macro_rules! block_stmt {
             fn tokens(&self) -> &[RcToken] {
                 &self.tokens
             }
-            
+
             fn lookaheads() -> &'static [TokenType] {
                 lookaheads!($($lookaheads)+)
             }
@@ -384,7 +414,7 @@ macro_rules! block_stmt {
 
         block_stmt!(@ $name $($tail)*);
     };
-    (@ $name:ident) => {}; 
+    (@ $name:ident) => {};
 
     ($name:ident $($tail:tt)+) => {
         block_stmt!(@ $name $($tail)+);
@@ -493,7 +523,12 @@ impl PartialEq for FunDef {
 #[cfg(test)]
 impl Debug for FunDef {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "FunDef {{ name: {:?} block: {:?} }}", self.name, self.block)
+        write!(
+            f,
+            "FunDef {{ name: {:?} block: {:?} }}",
+            self.name,
+            self.block
+        )
     }
 }
 
@@ -506,9 +541,7 @@ pub struct Import {
 
 impl Import {
     pub fn new(tokens: Tokens, path: String) -> Self {
-        Import {
-            tokens, path,
-        }
+        Import { tokens, path }
     }
 
     pub fn path(&self) -> &str {
@@ -555,8 +588,20 @@ pub struct ForeignFn {
 }
 
 impl ForeignFn {
-    pub fn new(tokens: Tokens, name: String, lib: String, params: Vec<ItemType>, return_type: ItemType) -> Self {
-        ForeignFn { tokens, name, lib, params, return_type }
+    pub fn new(
+        tokens: Tokens,
+        name: String,
+        lib: String,
+        params: Vec<ItemType>,
+        return_type: ItemType,
+    ) -> Self {
+        ForeignFn {
+            tokens,
+            name,
+            lib,
+            params,
+            return_type,
+        }
     }
 }
 
@@ -573,16 +618,22 @@ impl ASTNode for ForeignFn {
 #[cfg(test)]
 impl Debug for ForeignFn {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "ForeignFn {{ name: {} lib: {} params: {:?} return_type: {:?} }}",
-               self.name, self.lib, self.params, self.return_type)
+        write!(
+            f,
+            "ForeignFn {{ name: {} lib: {} params: {:?} return_type: {:?} }}",
+            self.name,
+            self.lib,
+            self.params,
+            self.return_type
+        )
     }
 }
 
 #[cfg(test)]
 impl PartialEq for ForeignFn {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.lib == other.lib
-            && self.params == other.params && self.return_type == other.return_type
+        self.name == other.name && self.lib == other.lib && self.params == other.params &&
+            self.return_type == other.return_type
     }
 }
 

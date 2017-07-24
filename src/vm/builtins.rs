@@ -48,7 +48,11 @@ fn plus(state: &mut State) -> Result<()> {
     let rhs = state.pop()?;
     // TODO : addition between different types
     match lhs {
-        Val::Int(i1) => if let Val::Int(i2) = rhs { state.push(Val::Int(i1 + i2)); },
+        Val::Int(i1) => {
+            if let Val::Int(i2) = rhs {
+                state.push(Val::Int(i1 + i2));
+            }
+        }
         _ => return Err("Addition between non-integers is not allowed".into()),
     }
     Ok(())
@@ -59,7 +63,11 @@ fn minus(state: &mut State) -> Result<()> {
     let lhs = state.pop()?;
     // TODO : addition between different types
     match lhs {
-        Val::Int(i1) => if let Val::Int(i2) = rhs { state.push(Val::Int(i1 - i2)); },
+        Val::Int(i1) => {
+            if let Val::Int(i2) = rhs {
+                state.push(Val::Int(i1 - i2));
+            }
+        }
         _ => return Err("Subtraction between non-integers is not allowed".into()),
     }
     Ok(())
@@ -70,7 +78,11 @@ fn times(state: &mut State) -> Result<()> {
     let rhs = state.pop()?;
     // TODO : addition between different types
     match lhs {
-        Val::Int(i1) => if let Val::Int(i2) = rhs { state.push(Val::Int(i1 * i2)); },
+        Val::Int(i1) => {
+            if let Val::Int(i2) = rhs {
+                state.push(Val::Int(i1 * i2));
+            }
+        }
         _ => return Err("Multiplication between non-integers is not allowed".into()),
     }
     Ok(())
@@ -81,7 +93,11 @@ fn divide(state: &mut State) -> Result<()> {
     let lhs = state.pop()?;
     // TODO : addition between different types
     match lhs {
-        Val::Int(i1) => if let Val::Int(i2) = rhs { state.push(Val::Int(i1 / i2)); },
+        Val::Int(i1) => {
+            if let Val::Int(i2) = rhs {
+                state.push(Val::Int(i1 / i2));
+            }
+        }
         _ => return Err("Division between non-integers is not allowed".into()),
     }
     Ok(())
@@ -91,7 +107,11 @@ fn bit_or(state: &mut State) -> Result<()> {
     let rhs = state.pop()?;
     let lhs = state.pop()?;
     match lhs {
-        Val::Int(i1) => if let Val::Int(i2) = rhs { state.push(Val::Int(i1 | i2)); },
+        Val::Int(i1) => {
+            if let Val::Int(i2) = rhs {
+                state.push(Val::Int(i1 | i2));
+            }
+        }
         _ => return Err("Bitwise-or between non-integers is not allowed".into()),
     }
     Ok(())
@@ -137,7 +157,9 @@ fn gt_equals(state: &mut State) -> Result<()> {
     let lhs = state.pop()?;
     let rhs = state.pop()?;
     let cmp = lhs.compare(&rhs)?;
-    state.push(Val::Bool(cmp == Ordering::Greater || cmp == Ordering::Equal));
+    state.push(Val::Bool(
+        cmp == Ordering::Greater || cmp == Ordering::Equal,
+    ));
     Ok(())
 }
 
@@ -165,9 +187,13 @@ fn push(state: &mut State) -> Result<()> {
     let mut stack = state.pop()?;
     if let Val::Stack(ref mut st) = stack {
         st.push(tos);
-    }
-    else {
-        return Err(format!("expected TOS item to be stack; instead got {}", stack.type_string()).into());
+    } else {
+        return Err(
+            format!(
+                "expected TOS item to be stack; instead got {}",
+                stack.type_string()
+            ).into(),
+        );
     }
 
     state.push(stack);
@@ -179,13 +205,16 @@ fn pop(state: &mut State) -> Result<()> {
     let popped: Val = if let Val::Stack(ref mut st) = stack {
         if st.len() > 0 {
             Ok(st.pop().unwrap()) as Result<Val>
-        }
-        else {
+        } else {
             Err("attempted to pop empty TOS item".into()) as Result<Val>
         }
-    }
-    else {
-        Err(format!("expected TOS item to be stack; instead got {}", stack.type_string()).into()) as Result<Val>
+    } else {
+        Err(
+            format!(
+                "expected TOS item to be stack; instead got {}",
+                stack.type_string()
+            ).into(),
+        ) as Result<Val>
     }?;
 
     state.push(stack);
@@ -197,7 +226,12 @@ fn len_o(state: &mut State) -> Result<()> {
     let len = {
         let p = state.peek()?;
         if !p.is_stack() {
-            return Err(format!("expected TOS item to be stack; instead got {}", p.type_string()).into());
+            return Err(
+                format!(
+                    "expected TOS item to be stack; instead got {}",
+                    p.type_string()
+                ).into(),
+            );
         }
         p.stack().len()
     };
