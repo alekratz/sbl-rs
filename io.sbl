@@ -1,0 +1,38 @@
+foreign "libc.so.6" {
+    int open [ string int int ]
+    int write [ int string int ]
+    # int read [ int stack ]
+    int close [ int ]
+    void perror [ string ]
+}
+
+O_WRONLY { 1 }
+O_CREAT { 64 }
+O_TRUNC { 512 }
+
+# Writes a single string to a file
+write-string {
+    .fname .str
+    "opening file" !println
+    0 O_CREAT O_TRUNC |
+    O_WRONLY | fname open
+    ^ .fd "file descriptor: " !print ^println
+    0 < br {
+        "could not open file" perror
+        .@ F
+    }
+    el {
+        "writing file" !println
+        .@ 
+        str !len str fd write
+        0 < br {
+            .@ F
+        }
+        el {
+            "closing file" !println
+            .@ fd close
+            0 ==
+        }
+    }
+}
+

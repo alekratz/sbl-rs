@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::marker::PhantomData;
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter, self};
+use std::fmt::{self, Display, Formatter};
 
 lazy_static! {
     static ref ESCAPES: HashMap<char, char> = {
@@ -37,7 +37,7 @@ lazy_static! {
     };
 
 }
-const IDENT_CHARS: &str = "!@$%^&*-+/=<>abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const IDENT_CHARS: &str = "_!@$%^&|*-+/=<>abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum TokenType {
@@ -127,8 +127,7 @@ impl Token {
         if self.token_type == TokenType::String {
             start += 1;
             end -= 1;
-        }
-        else if self.token_type == TokenType::Char {
+        } else if self.token_type == TokenType::Char {
             start += 1;
         }
         assert!(start <= end);
@@ -155,17 +154,16 @@ impl Token {
         loop {
             if let Some(c) = chars.next() {
                 if c == '\\' {
-                    let c = chars.next()
-                        .expect("TOKENIZER BUG: got escape start character, but no character following it");
+                    let c = chars.next().expect(
+                        "TOKENIZER BUG: got escape start character, but no character following it",
+                    );
                     let c = ESCAPES.get(&c)
                         .expect("TOKENIZER BUG: got invalid escape character that was not caught by the tokenizer");
                     built.push(*c);
-                }
-                else {
+                } else {
                     built.push(c);
                 }
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -208,7 +206,7 @@ impl<'c> Tokenizer<'c> {
             source_text: rc_text,
         };
         t.next_char();
-        t.next_char();  // start it at the current character
+        t.next_char(); // start it at the current character
         t
     }
 
@@ -241,12 +239,10 @@ impl<'c> Tokenizer<'c> {
             if curr == c {
                 self.next_char();
                 true
-            }
-            else {
+            } else {
                 false
             }
-        }
-        else {
+        } else {
             false
         }
     }
@@ -255,12 +251,10 @@ impl<'c> Tokenizer<'c> {
         if let Some(curr) = self.curr {
             if char_list.contains(curr) {
                 self.next_char()
-            }
-            else {
+            } else {
                 None
             }
-        }
-        else {
+        } else {
             None
         }
     }
@@ -270,13 +264,15 @@ impl<'c> Tokenizer<'c> {
             if c == curr {
                 self.next_char();
                 Ok(())
+            } else {
+                Err(
+                    format!("expected character `{}`; instead got `{}`", c, curr).into(),
+                )
             }
-            else {
-                Err(format!("expected character `{}`; instead got `{}`", c, curr).into())
-            }
-        }
-        else {
-            Err(format!("expected character `{}`; instead got EOF", c).into())
+        } else {
+            Err(
+                format!("expected character `{}`; instead got EOF", c).into(),
+            )
         }
     }
 
@@ -285,21 +281,29 @@ impl<'c> Tokenizer<'c> {
             if char_list.contains(curr) {
                 self.next_char();
                 Ok(())
-            }
-            else {
-                let expected_list = char_list.split(|_| true)
-                    .map(|c| format!("`{:?}`", c))
+            } else {
+                let expected_list = char_list
+                    .chars()
+                    .map(|c| format!("{:?}", c))
                     .collect::<Vec<_>>()
                     .join(", ");
-                Err(format!("expected any of {}; instead got `{:?}`", expected_list, curr).into())
+                Err(
+                    format!(
+                        "expected any of {}; instead got `{:?}`",
+                        expected_list,
+                        curr
+                    ).into(),
+                )
             }
-        }
-        else {
-            let expected_list = char_list.split(|_| true)
-                .map(|c| format!("`{}`", c))
+        } else {
+            let expected_list = char_list
+                .chars()
+                .map(|c| format!("{:?}", c))
                 .collect::<Vec<_>>()
                 .join(", ");
-            Err(format!("expected any of {}; instead got EOF", expected_list).into())
+            Err(
+                format!("expected any of {}; instead got EOF", expected_list).into(),
+            )
         }
     }
 
@@ -310,21 +314,32 @@ impl<'c> Tokenizer<'c> {
             if !char_list.contains(curr) {
                 self.next_char();
                 Ok(())
-            }
-            else {
-                let expected_list = char_list.split(|_| true)
+            } else {
+                let expected_list = char_list
+                    .split(|_| true)
                     .map(|c| format!("`{:?}`", c))
                     .collect::<Vec<_>>()
                     .join(", ");
-                Err(format!("expected any character EXCEPT {}; instead got `{:?}`", expected_list, curr).into())
+                Err(
+                    format!(
+                        "expected any character EXCEPT {}; instead got `{:?}`",
+                        expected_list,
+                        curr
+                    ).into(),
+                )
             }
-        }
-        else {
-            let expected_list = char_list.split(|_| true)
+        } else {
+            let expected_list = char_list
+                .split(|_| true)
                 .map(|c| format!("`{:?}`", c))
                 .collect::<Vec<_>>()
                 .join(", ");
-            Err(format!("expected any character EXCEPT {}; instead got EOF", expected_list).into())
+            Err(
+                format!(
+                    "expected any character EXCEPT {}; instead got EOF",
+                    expected_list
+                ).into(),
+            )
         }
     }
 
@@ -332,8 +347,7 @@ impl<'c> Tokenizer<'c> {
         while let Some(c) = self.curr {
             if c.is_whitespace() {
                 self.next_char();
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -345,8 +359,7 @@ impl<'c> Tokenizer<'c> {
         while let Some(c) = self.curr {
             if c != '\n' {
                 self.next_char();
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -359,7 +372,7 @@ impl<'c> Tokenizer<'c> {
         // TODO : hex/binary integers
         const DIGITS: &str = "0123456789";
         self.match_any_char(DIGITS)?;
-        while let Some(_) = self.try_match_any(DIGITS) { }
+        while let Some(_) = self.try_match_any(DIGITS) {}
         self.ok_token(TokenType::Int)
     }
 
@@ -372,13 +385,13 @@ impl<'c> Tokenizer<'c> {
                     self.next_char();
                     // match escapes
                     self.match_any_char(&ESCAPE_CHARS)?;
-                }
-                else {
+                } else {
                     self.next_char();
                 }
-            }
-            else {
-                return Err("expected string character or `\"` character; instead got EOF".into());
+            } else {
+                return Err(
+                    "expected string character or `\"` character; instead got EOF".into(),
+                );
             }
         }
         self.ok_token(TokenType::String)
@@ -389,8 +402,7 @@ impl<'c> Tokenizer<'c> {
         self.match_char('\'')?;
         if self.try_match_char('\\') {
             self.match_any_char(&ESCAPE_CHARS)?;
-        }
-        else {
+        } else {
             self.match_any_char_except(&ESCAPE_VALS)?;
         }
         self.ok_token(TokenType::Char)
@@ -412,11 +424,10 @@ impl<'c> Tokenizer<'c> {
             };
         };
         self.match_any_char(IDENT_CHARS)?;
-        while self.try_match_any(IDENT_CHARS).is_some() { }
+        while self.try_match_any(IDENT_CHARS).is_some() {}
         if let Some(ty) = KEYWORDS.get(self.curr_range.as_str()) {
             self.ok_token(*ty)
-        }
-        else {
+        } else {
             self.ok_token(TokenType::Ident)
         }
     }
@@ -442,7 +453,7 @@ impl<'c> Tokenizer<'c> {
 
 impl<'c> Iterator for Tokenizer<'c> {
     type Item = Result<Token>;
-    fn next(&mut self) -> Option<Result<Token>> { 
+    fn next(&mut self) -> Option<Result<Token>> {
         self.skip_ws();
 
         if self.is_end() {
@@ -451,12 +462,12 @@ impl<'c> Iterator for Tokenizer<'c> {
         assert!(self.curr.is_some());
         self.curr_range.catchup();
         self.next_range.catchup();
-        
+
         match self.curr.unwrap() {
             // comment
             '#' => Some(self.next_comment()),
             // integer
-            '0' ... '9' => Some(self.next_int()),
+            '0'...'9' => Some(self.next_int()),
             // string
             '"' => Some(self.next_string()),
             // char
