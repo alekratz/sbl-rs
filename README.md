@@ -1,4 +1,7 @@
 # SBL - Stack Based Language
+
+[![Build Status](https://travis-ci.org/alekratz/sbl-rs.svg?branch=master)](https://travis-ci.org/alekratz/sbl-rs)
+
 Original name, right?
 
 If you're just getting started, check the [wiki](https://github.com/alekratz/sbl/wiki)!
