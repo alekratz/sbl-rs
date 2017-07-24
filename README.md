@@ -4,7 +4,7 @@
 
 Original name, right?
 
-If you're just getting started, check the [wiki](https://github.com/alekratz/sbl/wiki)!
+If you're just getting started, check the [wiki](https://github.com/alekratz/sbl-rs/wiki)!
 
 ## This is what it looks like:
 ```
@@ -71,6 +71,7 @@ You can check out the grammar in [GRAMMAR.md](GRAMMAR.md).
 * A handful of primitive types
 * File path imports
     * Include paths, too!
+* Ability to call (some) foreign functions
 * More to come...
 
 # Non-features
@@ -79,7 +80,6 @@ Or, "room for improvement"
 * Lightning-fast virtual machine and compiler implemented in Python
 * No savable bytecode (see [#10](https://github.com/alekratz/sbl-rs/issues/10))
 * No base or standard library (see [#11](https://github.com/alekratz/sbl-rs/issues/11))
-* No FFI (see [#7](https://github.com/alekratz/sbl-rs/issues/7), [#9](https://github.com/alekratz/sbl-rs/issues/9))
 
 # Planned features
 TODO
