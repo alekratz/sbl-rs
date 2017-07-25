@@ -1,7 +1,6 @@
 use vm::*;
 use syntax::*;
 use errors::*;
-use common::*;
 use compile::{Compile, Optimize};
 use std::rc::Rc;
 use std::collections::HashMap;
@@ -59,12 +58,15 @@ impl CompileBytes {
             ast,
             fun_table: BoringTable::new(),
         }
-    } 
+    }
 
     /// Appends a set of builtin functions to the funtable. Overwrites any
     /// functions that have been defined already.
     pub fn builtins(mut self, builtins: &'static HashMap<&'static str, BuiltinFun>) -> Self {
-        for (k, v) in builtins.into_iter().map(|(k, v)| (k.to_string(), Some(Fun::BuiltinFun(v)))) {
+        for (k, v) in builtins.into_iter().map(|(k, v)| {
+            (k.to_string(), Some(Fun::BuiltinFun(v)))
+        })
+        {
             self.fun_table.insert(k, v);
         }
         self
@@ -266,10 +268,9 @@ impl OptimizeInline {
     fn should_inline(fun: &Fun) -> bool {
         const SKIP: &[&'static str] = &["main"]; // function names to skip and not inline
         if let &Fun::UserFun(ref fun) = fun as &Fun {
-            !SKIP.contains(&fun.name.as_str())
-                && !fun.body.iter().any(|bc| bc.bc_type == BcType::Call)
-        }
-        else {
+            !SKIP.contains(&fun.name.as_str()) &&
+                !fun.body.iter().any(|bc| bc.bc_type == BcType::Call)
+        } else {
             false
         }
     }
@@ -277,8 +278,7 @@ impl OptimizeInline {
     fn is_inline_call(&self, bc: &Bc) -> bool {
         if let &Some(Val::Ident(ref fname)) = &bc.val {
             bc.bc_type == BcType::Call && self.to_inline.contains_key(fname)
-        }
-        else {
+        } else {
             false
         }
     }
@@ -288,11 +288,11 @@ impl OptimizeInline {
     fn determine_inlines(&mut self) {
         for (ref fname, ref fun) in &self.fun_table {
             if Self::should_inline(fun) {
-                let ref fun_body = fun.user_fun()
-                    .body;
+                let ref fun_body = fun.user_fun().body;
                 // this gets all except the last instruction, which is the 'RET' instruction which
                 // messes things up a little bit.
-                let body_clone = fun_body.clone()
+                let body_clone = fun_body
+                    .clone()
                     .iter()
                     .cloned()
                     .take(fun_body.len() - 1)
@@ -310,8 +310,9 @@ impl OptimizeInline {
                 // if this fname is *not* in the list of things to inline
                 if !self.to_inline.contains_key(fname.as_str())
                     // this checks if a user function has a call to one of the inlines
-                    && fun.is_user_fun()
-                    && fun.user_fun().body.iter().any(|bc| self.is_inline_call(bc)) {
+                    && fun.is_user_fun() &&
+                    fun.user_fun().body.iter().any(|bc| self.is_inline_call(bc))
+                {
                     to_optimize.push(fname.to_string());
                 }
             }
@@ -321,21 +322,13 @@ impl OptimizeInline {
         for fname in to_optimize {
             let mut new_body = vec![];
             {
-                let fun = self.fun_table
-                    .get(&fname)
-                    .unwrap();
-                let ref body = (fun as &Fun).user_fun()
-                    .body;
+                let fun = self.fun_table.get(&fname).unwrap();
+                let ref body = (fun as &Fun).user_fun().body;
                 for bc in body {
                     if self.is_inline_call(bc) {
-                        let call_name = bc.clone()
-                            .val
-                            .unwrap()
-                            .ident()
-                            .to_string();
+                        let call_name = bc.clone().val.unwrap().ident().to_string();
                         new_body.append(&mut self.to_inline.get(&call_name).unwrap().clone());
-                    }
-                    else {
+                    } else {
                         new_body.push(bc.clone());
                     }
                 }
@@ -345,16 +338,17 @@ impl OptimizeInline {
                 .get(&fname)
                 .unwrap()
                 .user_fun()
-                .tokens.clone();
+                .tokens
+                .clone();
 
             // replace the function with the new body
-            self.fun_table.insert(fname.clone(),
-                                  Fun::UserFun(Rc::new(UserFun::new(fname, new_body, tokens))));
+            self.fun_table.insert(
+                fname.clone(),
+                Fun::UserFun(Rc::new(UserFun::new(fname, new_body, tokens))),
+            );
         }
 
     }
 
-    fn snip_inlines(&mut self) {
-    }
+    fn snip_inlines(&mut self) {}
 }
-

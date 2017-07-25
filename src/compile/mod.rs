@@ -16,4 +16,3 @@ pub trait Optimize {
 }
 
 pub use bytes::*;
-

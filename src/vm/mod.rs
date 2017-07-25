@@ -262,8 +262,7 @@ impl Fun {
     pub fn user_fun(&self) -> &UserFun {
         if let &Fun::UserFun(ref fun) = self {
             fun
-        }
-        else {
+        } else {
             panic!("Fun::user_fun() called on non-UserFun item")
         }
     }

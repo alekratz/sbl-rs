@@ -49,16 +49,22 @@ use std::path::Path;
 fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
     path: P,
     dump: bool,
+    optimize: bool,
     search_dirs: &[Q],
 ) -> Result<()> {
     let filled_ast = process_source_path(path, search_dirs).chain_err(
         || "Parse error",
     )?;
-    let compiler = CompileBytes::new(filled_ast)
-        .builtins(&*BUILTINS);
-    let fun_table = compiler.compile().chain_err(|| "Compile error")?;
-    let fun_table = OptimizeInline::new(fun_table)
-        .optimize();
+    let compiler = CompileBytes::new(filled_ast).builtins(&*BUILTINS);
+    let fun_table = {
+        let fun_table = compiler.compile().chain_err(|| "Compile error")?;
+        // run optimizations
+        if optimize {
+            OptimizeInline::new(fun_table).optimize()
+        } else {
+            fun_table
+        }
+    };
     if dump {
         for f in fun_table.iter().filter_map(
             |(_, f)| if let &Fun::UserFun(ref f) =
@@ -84,6 +90,10 @@ fn main() {
         (author: crate_authors!())
         (about: crate_description!())
         (@arg DUMP: -d --dump "Dumps the bytecode of all user-defined functions")
+        (@arg OPTIMIZE: -O --optimize +takes_value
+            default_value[true]
+            possible_values(&["true", "false", "0", "1", "yes", "no"])
+            "Whether or not to apply optimizations. Default is true.")
         (@arg INPUT: +required "Sets the input file to use")
         (@arg ARGV: +last ... "Any arguments to pass to the input file.")
     ).get_matches();
@@ -91,13 +101,13 @@ fn main() {
     let path = matches.value_of("INPUT").unwrap();
 
     let dump = matches.is_present("DUMP");
-
+    let optimize = (&["true", "yes", "1"]).contains(&matches.value_of("OPTIMIZE").unwrap());
     let search_dirs = match env::var("SBL_PATH") {
         Ok(p) => env::split_paths(&format!(".:{}", p)).collect::<Vec<_>>(),
         _ => vec![],
     };
 
-    if let Err(e) = run_program(path, dump, &search_dirs) {
+    if let Err(e) = run_program(path, dump, optimize, &search_dirs) {
         print_error_chain(e);
         process::exit(1);
     }
