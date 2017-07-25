@@ -1,11 +1,9 @@
-mod compile;
 mod vm;
 mod builtins;
 mod foreign;
 
-pub use self::compile::*;
 pub use self::vm::*;
-pub(in vm) use self::builtins::*;
+pub use self::builtins::*;
 
 use errors::*;
 use syntax::*;
@@ -249,10 +247,22 @@ impl UserFun {
     }
 }
 
+#[derive(EnumIsA)]
 pub enum Fun {
     UserFun(Rc<UserFun>),
     ForeignFun(ForeignFn),
     BuiltinFun(&'static BuiltinFun),
 }
 
-pub type FunTable = HashMap<String, Rc<Fun>>;
+impl Fun {
+    pub fn user_fun(&self) -> &UserFun {
+        if let &Fun::UserFun(ref fun) = self {
+            fun
+        } else {
+            panic!("Fun::user_fun() called on non-UserFun item")
+        }
+    }
+}
+
+pub type FunTable = HashMap<String, Fun>;
+pub type FunRcTable = HashMap<String, Rc<Fun>>;

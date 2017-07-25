@@ -142,14 +142,18 @@ impl State {
 }
 
 pub struct VM {
-    fun_table: FunTable,
+    fun_table: FunRcTable,
     state: RefCell<State>,
 }
 
 impl VM {
     pub fn new(fun_table: FunTable) -> Self {
+        let mut rc_table = FunRcTable::new();
+        for (k, v) in fun_table {
+            rc_table.insert(k, Rc::new(v));
+        }
         VM {
-            fun_table,
+            fun_table: rc_table,
             state: RefCell::new(State::new()),
         }
     }

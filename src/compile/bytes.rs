@@ -1,31 +1,24 @@
 use vm::*;
 use syntax::*;
 use errors::*;
+use compile::{Compile, Optimize};
 use std::rc::Rc;
+use std::collections::HashMap;
 
 /// A BoringTable is the predecessor to a FunTable; function names are first
 /// gathered, and then filled in.
 type BoringTable = HashMap<String, Option<Fun>>;
 
-pub struct Compiler<'ast> {
-    ast: &'ast AST,
+pub struct CompileBytes {
+    ast: AST,
     fun_table: BoringTable,
 }
 
-impl<'ast> Compiler<'ast> {
-    pub fn new(ast: &'ast AST) -> Self {
-        Compiler {
-            ast,
-            fun_table: BUILTINS
-                .iter()
-                .map(|(k, v)| (k.to_string(), Some(Fun::BuiltinFun(v))))
-                .collect::<HashMap<String, _>>(),
-        }
-    }
-
+impl Compile for CompileBytes {
+    type Out = FunTable;
     /// Consumes the compiler, producing a `FunTable` on success or message on
     /// error.
-    pub fn compile(mut self) -> Result<FunTable> {
+    fn compile(mut self) -> Result<Self::Out> {
         self.fill_boring_table()?;
         for top in &self.ast.ast {
             if let &TopLevel::FunDef(ref fun) = top {
@@ -53,9 +46,30 @@ impl<'ast> Compiler<'ast> {
         Ok(
             self.fun_table
                 .into_iter()
-                .map(|(k, v)| (k, Rc::new(v.unwrap())))
+                .map(|(k, v)| (k, v.unwrap()))
                 .collect(),
         )
+    }
+}
+
+impl CompileBytes {
+    pub fn new(ast: AST) -> Self {
+        CompileBytes {
+            ast,
+            fun_table: BoringTable::new(),
+        }
+    }
+
+    /// Appends a set of builtin functions to the funtable. Overwrites any
+    /// functions that have been defined already.
+    pub fn builtins(mut self, builtins: &'static HashMap<&'static str, BuiltinFun>) -> Self {
+        for (k, v) in builtins.into_iter().map(|(k, v)| {
+            (k.to_string(), Some(Fun::BuiltinFun(v)))
+        })
+        {
+            self.fun_table.insert(k, v);
+        }
+        self
     }
 
     fn fill_boring_table(&mut self) -> Result<()> {
@@ -112,7 +126,7 @@ impl<'ast> Compiler<'ast> {
         Ok(())
     }
 
-    fn compile_block(&self, block: &'ast Block, jmp_offset: usize) -> Result<BcBody> {
+    fn compile_block(&self, block: &Block, jmp_offset: usize) -> Result<BcBody> {
         let mut body = vec![];
         for stmt in &block.block {
             match *stmt {
@@ -173,7 +187,7 @@ impl<'ast> Compiler<'ast> {
         Ok(body.into_iter().map(Option::unwrap).collect())
     }
 
-    fn compile_stack_stmt(&self, stmt: &'ast StackStmt) -> Result<BcBody> {
+    fn compile_stack_stmt(&self, stmt: &StackStmt) -> Result<BcBody> {
         let mut body = BcBody::new();
         for action in &stmt.stack_actions {
             match *action {
@@ -190,7 +204,7 @@ impl<'ast> Compiler<'ast> {
         Ok(body)
     }
 
-    fn compile_item_push(&self, item: &'ast Item) -> Result<BcBody> {
+    fn compile_item_push(&self, item: &Item) -> Result<BcBody> {
         match item.item_type {
             ItemType::Stack(_) => self.compile_local_stack(item),
             ItemType::Ident(ref ident) => {
@@ -204,7 +218,7 @@ impl<'ast> Compiler<'ast> {
         }
     }
 
-    fn compile_local_stack(&self, item: &'ast Item) -> Result<BcBody> {
+    fn compile_local_stack(&self, item: &Item) -> Result<BcBody> {
         assert_matches!(item.item_type, ItemType::Stack(_));
         let items = if let ItemType::Stack(ref stack) = item.item_type {
             stack
@@ -222,5 +236,116 @@ impl<'ast> Compiler<'ast> {
             }
             Ok(body)
         }
+    }
+}
+
+/// An optimizer that inlines functions.
+pub struct OptimizeInline {
+    fun_table: FunTable,
+    to_inline: HashMap<String, BcBody>,
+}
+
+impl Optimize for OptimizeInline {
+    type Out = FunTable;
+
+    fn optimize(mut self) -> Self::Out {
+        self.determine_inlines();
+        self.replace_inlines();
+
+        self.fun_table
+    }
+}
+
+impl OptimizeInline {
+    pub fn new(fun_table: FunTable) -> Self {
+        OptimizeInline {
+            fun_table,
+            to_inline: HashMap::new(),
+        }
+    }
+    /// Determines whether a given function should be inlined.
+    fn should_inline(fun: &Fun) -> bool {
+        const SKIP: &[&'static str] = &["main"]; // function names to skip and not inline
+        if let &Fun::UserFun(ref fun) = fun as &Fun {
+            !SKIP.contains(&fun.name.as_str()) &&
+                !fun.body.iter().any(|bc| bc.bc_type == BcType::Call)
+        } else {
+            false
+        }
+    }
+
+    fn is_inline_call(&self, bc: &Bc) -> bool {
+        if let &Some(Val::Ident(ref fname)) = &bc.val {
+            bc.bc_type == BcType::Call && self.to_inline.contains_key(fname)
+        } else {
+            false
+        }
+    }
+
+    /// Determines which functions to inline.
+    /// Functions are inlined if they don't call another function.
+    fn determine_inlines(&mut self) {
+        for (ref fname, ref fun) in &self.fun_table {
+            if Self::should_inline(fun) {
+                let ref fun_body = fun.user_fun().body;
+                // this gets all except the last instruction, which is the 'RET' instruction which
+                // messes things up a little bit.
+                let body_clone = fun_body
+                    .clone()
+                    .iter()
+                    .cloned()
+                    .take(fun_body.len() - 1)
+                    .collect::<Vec<_>>();
+                self.to_inline.insert(fname.to_string(), body_clone);
+            }
+        }
+    }
+
+    fn replace_inlines(&mut self) {
+        let mut to_optimize = vec![];
+        // this section determines which functions we're going to apply optimizations to
+        {
+            for (ref fname, ref fun) in &self.fun_table {
+                // if this fname is *not* in the list of things to inline
+                if !self.to_inline.contains_key(fname.as_str())
+                    // this checks if a user function has a call to one of the inlines
+                    && fun.is_user_fun() &&
+                    fun.user_fun().body.iter().any(|bc| self.is_inline_call(bc))
+                {
+                    to_optimize.push(fname.to_string());
+                }
+            }
+        }
+
+        // this section applies optimizations
+        for fname in to_optimize {
+            let mut new_body = vec![];
+            {
+                let fun = self.fun_table.get(&fname).unwrap();
+                let ref body = (fun as &Fun).user_fun().body;
+                for bc in body {
+                    if self.is_inline_call(bc) {
+                        let call_name = bc.clone().val.unwrap().ident().to_string();
+                        new_body.append(&mut self.to_inline.get(&call_name).unwrap().clone());
+                    } else {
+                        new_body.push(bc.clone());
+                    }
+                }
+            }
+
+            let tokens = self.fun_table
+                .get(&fname)
+                .unwrap()
+                .user_fun()
+                .tokens
+                .clone();
+
+            // replace the function with the new body
+            self.fun_table.insert(
+                fname.clone(),
+                Fun::UserFun(Rc::new(UserFun::new(fname, new_body, tokens))),
+            );
+        }
+
     }
 }
