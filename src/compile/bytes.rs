@@ -251,7 +251,6 @@ impl Optimize for OptimizeInline {
     fn optimize(mut self) -> Self::Out {
         self.determine_inlines();
         self.replace_inlines();
-        self.snip_inlines();
 
         self.fun_table
     }
@@ -349,6 +348,4 @@ impl OptimizeInline {
         }
 
     }
-
-    fn snip_inlines(&mut self) {}
 }
