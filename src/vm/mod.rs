@@ -245,10 +245,6 @@ impl UserFun {
                 if let Some(ref payload) = bc.val { format!("{:?}", payload) } else { format!("") });
         }
     }
-
-    pub fn replace_body(&mut self, body: BcBody) {
-        self.body = body;
-    }
 }
 
 #[derive(EnumIsA)]
