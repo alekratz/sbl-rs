@@ -54,9 +54,11 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
     let filled_ast = process_source_path(path, search_dirs).chain_err(
         || "Parse error",
     )?;
-    let compiler = CompileBytes::new(&filled_ast)
+    let compiler = CompileBytes::new(filled_ast)
         .builtins(&*BUILTINS);
     let fun_table = compiler.compile().chain_err(|| "Compile error")?;
+    let fun_table = OptimizeInline::new(fun_table)
+        .optimize();
     if dump {
         for f in fun_table.iter().filter_map(
             |(_, f)| if let &Fun::UserFun(ref f) =

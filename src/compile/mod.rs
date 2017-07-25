@@ -1,5 +1,4 @@
 pub mod bytes;
-pub mod optimize;
 
 use errors::*;
 
@@ -10,5 +9,11 @@ pub trait Compile {
     fn compile(self) -> Result<Self::Out>;
 }
 
+pub trait Optimize {
+    type Out;
+
+    fn optimize(self) -> Self::Out;
+}
+
 pub use bytes::*;
-pub use optimize::*;
+

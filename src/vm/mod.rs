@@ -245,12 +245,29 @@ impl UserFun {
                 if let Some(ref payload) = bc.val { format!("{:?}", payload) } else { format!("") });
         }
     }
+
+    pub fn replace_body(&mut self, body: BcBody) {
+        self.body = body;
+    }
 }
 
+#[derive(EnumIsA)]
 pub enum Fun {
     UserFun(Rc<UserFun>),
     ForeignFun(ForeignFn),
     BuiltinFun(&'static BuiltinFun),
 }
 
-pub type FunTable = HashMap<String, Rc<Fun>>;
+impl Fun {
+    pub fn user_fun(&self) -> &UserFun {
+        if let &Fun::UserFun(ref fun) = self {
+            fun
+        }
+        else {
+            panic!("Fun::user_fun() called on non-UserFun item")
+        }
+    }
+}
+
+pub type FunTable = HashMap<String, Fun>;
+pub type FunRcTable = HashMap<String, Rc<Fun>>;
