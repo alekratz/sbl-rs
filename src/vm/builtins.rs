@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 pub type BuiltinFun = fn(&mut State) -> Result<()>;
 
 lazy_static! {
-    pub(in vm) static ref BUILTINS: HashMap<&'static str, BuiltinFun> = {
+    pub static ref BUILTINS: HashMap<&'static str, BuiltinFun> = {
         hashmap! {
             // Operations
             "+" => plus as BuiltinFun,  // for some reason this cascades down the list

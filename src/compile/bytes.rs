@@ -1,31 +1,24 @@
 use vm::*;
 use syntax::*;
 use errors::*;
+use compile::Compile;
 use std::rc::Rc;
+use std::collections::HashMap;
 
 /// A BoringTable is the predecessor to a FunTable; function names are first
 /// gathered, and then filled in.
 type BoringTable = HashMap<String, Option<Fun>>;
 
-pub struct Compiler<'ast> {
+pub struct CompileBytes<'ast> {
     ast: &'ast AST,
     fun_table: BoringTable,
 }
 
-impl<'ast> Compiler<'ast> {
-    pub fn new(ast: &'ast AST) -> Self {
-        Compiler {
-            ast,
-            fun_table: BUILTINS
-                .iter()
-                .map(|(k, v)| (k.to_string(), Some(Fun::BuiltinFun(v))))
-                .collect::<HashMap<String, _>>(),
-        }
-    }
-
+impl<'ast> Compile for CompileBytes<'ast> {
+    type Out = FunTable;
     /// Consumes the compiler, producing a `FunTable` on success or message on
     /// error.
-    pub fn compile(mut self) -> Result<FunTable> {
+    fn compile(mut self) -> Result<Self::Out> {
         self.fill_boring_table()?;
         for top in &self.ast.ast {
             if let &TopLevel::FunDef(ref fun) = top {
@@ -56,6 +49,24 @@ impl<'ast> Compiler<'ast> {
                 .map(|(k, v)| (k, Rc::new(v.unwrap())))
                 .collect(),
         )
+    }
+}
+
+impl<'ast> CompileBytes<'ast> {
+    pub fn new(ast: &'ast AST) -> Self {
+        CompileBytes {
+            ast,
+            fun_table: BoringTable::new(),
+        }
+    } 
+
+    /// Appends a set of builtin functions to the funtable. Overwrites any
+    /// functions that have been defined already.
+    pub fn builtins(mut self, builtins: &'static HashMap<&'static str, BuiltinFun>) -> Self {
+        for (k, v) in builtins.into_iter().map(|(k, v)| (k.to_string(), Some(Fun::BuiltinFun(v)))) {
+            self.fun_table.insert(k, v);
+        }
+        self
     }
 
     fn fill_boring_table(&mut self) -> Result<()> {

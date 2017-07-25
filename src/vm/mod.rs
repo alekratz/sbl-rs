@@ -1,11 +1,9 @@
-mod compile;
 mod vm;
 mod builtins;
 mod foreign;
 
-pub use self::compile::*;
 pub use self::vm::*;
-pub(in vm) use self::builtins::*;
+pub use self::builtins::*;
 
 use errors::*;
 use syntax::*;

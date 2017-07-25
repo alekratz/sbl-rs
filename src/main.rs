@@ -14,6 +14,7 @@ extern crate libc;
 extern crate libffi;
 
 mod syntax;
+mod compile;
 mod vm;
 #[macro_use]
 mod common;
@@ -40,6 +41,7 @@ mod errors {
 use common::*;
 use errors::*;
 use vm::*;
+use compile::*;
 use std::process;
 use std::env;
 use std::path::Path;
@@ -52,7 +54,8 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
     let filled_ast = process_source_path(path, search_dirs).chain_err(
         || "Parse error",
     )?;
-    let compiler = Compiler::new(&filled_ast);
+    let compiler = CompileBytes::new(&filled_ast)
+        .builtins(&*BUILTINS);
     let fun_table = compiler.compile().chain_err(|| "Compile error")?;
     if dump {
         for f in fun_table.iter().filter_map(
