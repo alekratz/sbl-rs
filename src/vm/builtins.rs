@@ -225,15 +225,20 @@ fn pop(state: &mut State) -> Result<()> {
 fn len_o(state: &mut State) -> Result<()> {
     let len = {
         let p = state.peek()?;
-        if !p.is_stack() {
+        if p.is_stack() {
+            p.stack().len()
+        }
+        else if p.is_string() {
+            p.string().len()
+        }
+        else {
             return Err(
                 format!(
-                    "expected TOS item to be stack; instead got {}",
+                    "expected TOS item to be stack or string; instead got {}",
                     p.type_string()
                 ).into(),
             );
         }
-        p.stack().len()
     };
     state.push(Val::Int(len as i64));
     Ok(())
