@@ -41,9 +41,9 @@ These are the tokens that are recognized by the tokenizer.
 ```
 comment = '#' .+ $
 
-num = [1-9][0-9]*
-    | '0' [xX] [0-9a-fA-F]+
-    | '0' [bB] [01]+
+num = '-'? [1-9][0-9]*
+    | '-'? '0' [xX] [0-9a-fA-F]+
+    | '-'? '0' [bB] [01]+
 
 ident = [A-z_!$%^&*-+/]+
 
