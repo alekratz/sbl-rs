@@ -36,6 +36,9 @@ lazy_static! {
             "!print" => print_c,
             "^println" => println_o,
             "!println" => println_c,
+
+            // Debug functions
+            "^dump_stack" => dump_stack,
         }
     };
 }
@@ -225,23 +228,44 @@ fn pop(state: &mut State) -> Result<()> {
 fn len_o(state: &mut State) -> Result<()> {
     let len = {
         let p = state.peek()?;
-        if !p.is_stack() {
+        if p.is_stack() {
+            p.stack().len()
+        }
+        else if p.is_string() {
+            p.string().len()
+        }
+        else {
             return Err(
                 format!(
-                    "expected TOS item to be stack; instead got {}",
+                    "expected TOS item to be stack or string; instead got {}",
                     p.type_string()
                 ).into(),
             );
         }
-        p.stack().len()
     };
     state.push(Val::Int(len as i64));
     Ok(())
 }
 
 fn len_c(state: &mut State) -> Result<()> {
-    len_o(state)?;
-    state.pop()?;
+    let len = {
+        let p = state.pop()?;
+        if p.is_stack() {
+            p.stack().len()
+        }
+        else if p.is_string() {
+            p.string().len()
+        }
+        else {
+            return Err(
+                format!(
+                    "expected TOS item to be stack or string; instead got {}",
+                    p.type_string()
+                ).into(),
+            );
+        }
+    };
+    state.push(Val::Int(len as i64));
     Ok(())
 }
 
@@ -270,5 +294,24 @@ fn println_o(state: &mut State) -> Result<()> {
 fn println_c(state: &mut State) -> Result<()> {
     println_o(state)?;
     state.pop()?;
+    Ok(())
+}
+
+fn dump_stack(state: &mut State) -> Result<()> {
+    eprintln!("- dumping global stack -------------------------------------------------");
+    let mut c = 0;
+    for f in state.stack.iter().rev() {
+        if c == 0 {
+            eprintln!("   top: {:?}", f);
+        }
+        else if c == state.stack.len() - 1 {
+            eprintln!("bottom: {:?}", f);
+        }
+        else {
+            eprintln!( "{:>6}: {:?}", c, f);
+        }
+        c += 1;
+    }
+    eprintln!("{}", "-".repeat(72));
     Ok(())
 }

@@ -50,7 +50,7 @@ impl Val {
 
     pub fn compare(&self, other: &Val) -> Result<Ordering> {
         if !self.matches(other) {
-            return Err("attempted to compare a {} value against a {} value".into());
+            return Err(format!("attempted to compare a {} value against a {} value", self.type_string(), other.type_string()).into());
         }
 
         match self {
@@ -240,9 +240,11 @@ impl UserFun {
     }
 
     pub fn dump(&self) {
+        let mut addr = 0;
         for bc in &self.body {
-            eprintln!("{:6} {}", &bc.bc_type.to_string(),
+            eprintln!("{:06} {:6} {}", addr, &bc.bc_type.to_string(),
                 if let Some(ref payload) = bc.val { format!("{:?}", payload) } else { format!("") });
+            addr += 1;
         }
     }
 }

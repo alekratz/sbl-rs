@@ -34,6 +34,12 @@ test-numbers {
         square "value is " !print !println
     }
     .@
+
+    "printing numbers of different bases" !println
+
+    "0b101010 = " !print 0b101010 !println
+    "0o1000 = " !print 0o1000 !println
+    "0x1000 = " !print 0x1000 !println
 }
 
 test-printing {
@@ -161,7 +167,7 @@ main {
         $ 0 >
     }
 
-    # "testing file writing" !println
-    # "hello darkness, my old friend" "test.txt" write-string
-    # "status: " !print !println
+    "testing file writing" !println
+    "hello darkness, my old friend" "test.txt" write-string
+    "status: " !print !println
 }

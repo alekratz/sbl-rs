@@ -36,6 +36,11 @@ pub trait ASTNode {
 }
 
 macro_rules! lookaheads {
+    (@ TokenType::$head:ident ( $($expr:expr),+ ) $($tail:tt)*) => {{
+        let mut tail = lookaheads!(@ $($tail)*);
+        tail.push(TokenType::$head ( $($expr),+ ));
+        tail
+    }};
     (@ TokenType::$head:ident $($tail:tt)*) => {{
         let mut tail = lookaheads!(@ $($tail)*);
         tail.push(TokenType::$head);
@@ -140,7 +145,10 @@ impl ASTNode for Item {
     fn lookaheads() -> &'static [TokenType] {
         lookaheads!(TokenType::Int TokenType::Ident TokenType::Char
                     TokenType::String TokenType::KwT TokenType::KwF
-                    TokenType::KwNil TokenType::LBrack)
+                    TokenType::KwNil TokenType::LBrack
+                    TokenType::BasedInt(2)
+                    TokenType::BasedInt(8)
+                    TokenType::BasedInt(16))
     }
 }
 
@@ -152,6 +160,12 @@ impl From<Token> for Item {
                 Item::new(
                     vec![other.into_rc()],
                     ItemType::Int(other_str.parse().unwrap()),
+                )
+            }
+            TokenType::BasedInt(base) => {
+                Item::new(
+                    vec![other.into_rc()],
+                    ItemType::Int(i64::from_str_radix(&other_str[2 ..], base as u32).unwrap()),
                 )
             }
             TokenType::Ident => {
