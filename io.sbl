@@ -25,7 +25,7 @@ write-string {
         .@ 
         "writing file" !println
         str !len str fd write
-        0 < br {
+        0 ^dump_stack < "checking characters written" !println br {
             "could not open file" perror
             .@ F
         }
