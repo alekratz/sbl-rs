@@ -163,7 +163,7 @@ impl CompileBytes {
                         body.len()
                     };
                     body[start_addr] =
-                        Some(Bc::jmpz(br.tokens().into(), Val::Int(end_addr as i64)));
+                        Some(Bc::jmpz(br.tokens().into(), Val::Int((jmp_offset + end_addr) as i64)));
                 }
                 Stmt::Loop(ref lp) => {
                     let start_addr = body.len();
@@ -180,7 +180,7 @@ impl CompileBytes {
                     ));
                     let end_addr = body.len();
                     body[start_addr] =
-                        Some(Bc::jmpz(lp.tokens().into(), Val::Int(end_addr as i64)));
+                        Some(Bc::jmpz(lp.tokens().into(), Val::Int((jmp_offset + end_addr) as i64)));
                 }
             }
         }

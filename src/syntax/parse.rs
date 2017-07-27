@@ -490,6 +490,7 @@ mod test {
                 1 2 3 .a .b .c
                 $ .@
                 @ [1 2 3 4 5]
+                @ [ 0x10 0b10 0o10 ]
             }
 
             main {
@@ -522,7 +523,8 @@ mod test {
             (expect_top_level, top_level!(FunDef "foo" => {
                 (Stack Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c"
                        Push Ident "$" Pop Nil
-                       Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)])
+                       Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)]
+                       Push Nil Push Stack [(Int 16) (Int 2) (Int 8)])
             }))
             (expect_top_level, top_level!(FunDef "main" => {
                 (Stack

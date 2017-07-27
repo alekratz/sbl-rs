@@ -38,7 +38,6 @@ impl ForeignFn {
         // string pool holds all of the strings that we have to re-allocate as CStrings
         let mut string_pool = vec![];
         let mut val_args = vec![];
-        eprintln!("calling {}", &self.name);
         for p in &self.params {
             let arg = state.pop()?;
             let matches = match *p {
@@ -59,7 +58,6 @@ impl ForeignFn {
                     ).into(),
                 );
             }
-            eprintln!("arg: {:?}", arg);
             val_args.push(arg);
         }
 

@@ -45,6 +45,7 @@ pub enum TokenType {
 
     // Varying things
     Int,
+    BasedInt(usize),
     Float,
     String,
     Char,
@@ -75,6 +76,7 @@ impl Display for TokenType {
         let s = match *self {
             Comment => "comment",
             Int => "int",
+            BasedInt(_) => "int",
             Float => "float",
             String => "string",
             Char => "char",
@@ -369,11 +371,43 @@ impl<'c> Tokenizer<'c> {
 
     /// Attempts to match an integer.
     fn next_int(&mut self) -> Result<Token> {
-        // TODO : hex/binary integers
-        const DIGITS: &str = "0123456789";
-        self.match_any_char(DIGITS)?;
-        while let Some(_) = self.try_match_any(DIGITS) {}
-        self.ok_token(TokenType::Int)
+        const PREFICES: &[char] = &['x', 'X', 'b', 'B', 'o'];
+        const DEC_DIGITS: &str = "0123456789";
+        const HEX_DIGITS: &str = "0123456789abcdefABCDEF";
+        const OCT_DIGITS: &str = "01234567";
+        const BIN_DIGITS: &str = "01";
+        if self.curr.map(|c| c == '0').unwrap_or(false) && self.next.map(|c| PREFICES.contains(&c)).unwrap_or(false) {
+            let (digits, base) = match self.next {
+                // hex number
+                Some('x') | Some('X') => {
+                    self.next_char();
+                    self.next_char();
+                    (HEX_DIGITS, 16)
+                },
+                // binary number
+                Some('b') | Some('B') => {
+                    self.next_char();
+                    self.next_char();
+                    (BIN_DIGITS, 2)
+                },
+                // octal number
+                Some('o') => {
+                    self.next_char();
+                    self.next_char();
+                    (OCT_DIGITS, 8)
+                },
+                Some(_) => unreachable!(),
+                None => unreachable!(),
+            };
+            self.match_any_char(digits)?;
+            while let Some(_) = self.try_match_any(digits) { }
+            self.ok_token(TokenType::BasedInt(base))
+        }
+        else {
+            self.match_any_char(DEC_DIGITS)?;
+            while let Some(_) = self.try_match_any(DEC_DIGITS) {}
+            self.ok_token(TokenType::Int)
+        }
     }
 
     /// Attempts to match a string.
@@ -646,6 +680,9 @@ mod test {
             34
             123456789
             1100010010
+            0o77447744
+            0xFF77FF88
+            0b11001010
             "#,
 
             (TokenType::Int, "0")
@@ -653,6 +690,9 @@ mod test {
             (TokenType::Int, "34")
             (TokenType::Int, "123456789")
             (TokenType::Int, "1100010010")
+            (TokenType::BasedInt(8), "0o77447744")
+            (TokenType::BasedInt(16), "0xFF77FF88")
+            (TokenType::BasedInt(2), "0b11001010")
         };
     }
 
