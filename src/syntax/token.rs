@@ -504,7 +504,7 @@ impl<'c> Iterator for Tokenizer<'c> {
             // comment
             '#' => Some(self.next_comment()),
             // negative integer
-            '-' if self.next.unwrap().is_digit(10) => Some(self.next_int()),
+            '-' if self.next.map(|c| c.is_digit(10)).unwrap_or(false) => Some(self.next_int()),
             // positive integer
             '0'...'9' => Some(self.next_int()),
             // string
