@@ -376,6 +376,9 @@ impl<'c> Tokenizer<'c> {
         const HEX_DIGITS: &str = "0123456789abcdefABCDEF";
         const OCT_DIGITS: &str = "01234567";
         const BIN_DIGITS: &str = "01";
+        
+        self.try_match_char('-');
+        
         if self.curr.map(|c| c == '0').unwrap_or(false) && self.next.map(|c| PREFICES.contains(&c)).unwrap_or(false) {
             let (digits, base) = match self.next {
                 // hex number
@@ -500,7 +503,9 @@ impl<'c> Iterator for Tokenizer<'c> {
         match self.curr.unwrap() {
             // comment
             '#' => Some(self.next_comment()),
-            // integer
+            // negative integer
+            '-' if self.next.unwrap().is_digit(10) => Some(self.next_int()),
+            // positive integer
             '0'...'9' => Some(self.next_int()),
             // string
             '"' => Some(self.next_string()),
@@ -683,6 +688,14 @@ mod test {
             0o77447744
             0xFF77FF88
             0b11001010
+            -0
+            -12
+            -34
+            -123456789
+            -1100010010
+            -0o77447744
+            -0xFF77FF88
+            -0b11001010
             "#,
 
             (TokenType::Int, "0")
@@ -693,6 +706,14 @@ mod test {
             (TokenType::BasedInt(8), "0o77447744")
             (TokenType::BasedInt(16), "0xFF77FF88")
             (TokenType::BasedInt(2), "0b11001010")
+            (TokenType::Int, "-0")
+            (TokenType::Int, "-12")
+            (TokenType::Int, "-34")
+            (TokenType::Int, "-123456789")
+            (TokenType::Int, "-1100010010")
+            (TokenType::BasedInt(8), "-0o77447744")
+            (TokenType::BasedInt(16), "-0xFF77FF88")
+            (TokenType::BasedInt(2), "-0b11001010")
         };
     }
 
