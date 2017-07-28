@@ -15,4 +15,4 @@ pub trait Optimize {
     fn optimize(self) -> Self::Out;
 }
 
-pub use bytes::*;
+pub use self::bytes::*;

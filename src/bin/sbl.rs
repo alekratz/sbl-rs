@@ -1,47 +1,11 @@
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate maplit;
-#[macro_use]
 extern crate clap;
-#[macro_use]
-extern crate matches;
-#[macro_use]
-extern crate enum_methods;
-extern crate libc;
-extern crate libffi;
+extern crate sbl;
 
-mod syntax;
-mod compile;
-mod vm;
-#[macro_use]
-mod common;
-
-mod errors {
-    use common::*;
-
-    error_chain! {
-        errors {
-            Ranged(range: Range) {
-                description("Ranged error")
-                display("in {}", range)
-            }
-        }
-    }
-
-    impl From<Range> for ErrorKind {
-        fn from(r: Range) -> ErrorKind {
-            ErrorKind::Ranged(r)
-        }
-    }
-}
-
-use common::*;
-use errors::*;
-use vm::*;
-use compile::*;
+use sbl::common::*;
+use sbl::errors::*;
+use sbl::vm::*;
+use sbl::compile::*;
 use std::process;
 use std::env;
 use std::path::Path;
