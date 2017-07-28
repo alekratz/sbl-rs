@@ -1,5 +1,5 @@
 [package]
-name = "sbl-rs"
+name = "sbl"
 version = "0.1.0"
 authors = ["Alek Ratzloff <alekratz@gmail.com>"]
 description = "SBL - a stack based language"
