@@ -44,16 +44,16 @@ cargo build
 If you want to build a release version, tack `--release` to the end of the
 `cargo` invocation.
 
-Optionally if you want to run `sbl-rs` from the command line, run
+Optionally if you want to run `sbl` from the command line, run
 `cargo install`. Otherwise, you can run the program from
-`target/{debug,release}/sbl-rs file.sbl` or `cargo run -- file.sbl`.
+`target/{debug,release}/sbl file.sbl` or `cargo run -- file.sbl`.
 
 # Basic usage
 All SBL supports right now is running directly from a file. If you wish to import code from multiple
 files, multiple files may be supplied from the command line.
 
 ## Examples
-* `sbl-rs test.sbl`
+* `sbl test.sbl`
 
 Note that SBL files must not contain duplicate functions; this is a compile-time error if they do.
 
