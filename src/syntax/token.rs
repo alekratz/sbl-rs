@@ -358,14 +358,20 @@ impl<'c> Tokenizer<'c> {
     /// Attempts to match a comment.
     fn next_comment(&mut self) -> Result<Token> {
         self.match_char('#')?;
-        while let Some(c) = self.curr {
-            if c != '\n' {
+        if self.curr == Some('!') {
+            self.next_char();
+            while !(self.curr == Some('!') && self.next == Some('#')) {
                 self.next_char();
-            } else {
-                break;
             }
+            self.next_char();
+            self.next_char(); // skip past the !#
         }
-        self.next_char(); // skip past the newline
+        else {
+            while self.curr != Some('\n') {
+                self.next_char();
+            }
+            self.next_char(); // skip past the newline
+        }
         self.ok_token(TokenType::Comment)
     }
 

@@ -1,8 +1,8 @@
 # Example program
-# factorial
 import "basic.sbl"
 import "io.sbl"
 
+# factorial
 fact {
     # duplicate and compare to zero
     ^ 0 ==
@@ -107,7 +107,7 @@ test-stacks {
     }
     .2 "" !println
 
-    "Here's a number, spelled out with individual characters from a local stack:"
+    "Here's a number, \"spelled\" out with individual characters from a local stack:"
         !println
     [ '9 '5 '1 '4 '1 '. '3 ]  # create a stack with some characters
     T  # initial truth value to start the loop
