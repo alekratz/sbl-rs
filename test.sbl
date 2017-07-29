@@ -176,4 +176,7 @@ main {
     "testing file writing" !println
     "hello darkness, my old friend" "test.txt" write-string
     "status: " !print !println
+    "deleting file" !println
+    "test.txt" unlink
+    0 >= "status: " !print !println
 }
