@@ -62,11 +62,12 @@ You can check out the grammar in [GRAMMAR.md](GRAMMAR.md).
 
 # Features
 * Terse syntax
+* [Tacit-style programming](https://en.wikipedia.org/wiki/Tacit_programming)
 * Branches
 * Loops
 * Recursive functions
 * Order-agnostic function definition
-* Simple, LL(0) grammar (not regular, but close)
+* Simple, LL(0) grammar
 * Built-in function support
 * A handful of primitive types
 * File path imports
@@ -77,12 +78,14 @@ You can check out the grammar in [GRAMMAR.md](GRAMMAR.md).
 # Non-features
 Or, "room for improvement"
 
-* Lightning-fast virtual machine and compiler implemented in Python
 * No savable bytecode (see [#10](https://github.com/alekratz/sbl-rs/issues/10))
 * No base or standard library (see [#11](https://github.com/alekratz/sbl-rs/issues/11))
 
 # Planned features
-TODO
+Check out the [planned feature tag on the issues page](https://github.com/alekratz/sbl-rs/issues?q=is%3Aissue+is%3Aopen+label%3A%22planned+feature%22).
+
+This is the list of features that are officially planned and ready to be
+implemented that have not yet been added. All features are open for discussion.
 
 # Releases
 None yet!
