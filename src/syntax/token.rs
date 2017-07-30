@@ -363,14 +363,14 @@ impl<'c> Tokenizer<'c> {
             while !(self.curr == Some('!') && self.next == Some('#')) {
                 self.next_char();
             }
-            self.next_char();
-            self.next_char(); // skip past the !#
+            self.match_char('!');
+            self.match_char('#'); // skip past the !#
         }
         else {
-            while self.curr != Some('\n') {
+            while self.curr.is_some() && self.curr != Some('\n') {
                 self.next_char();
             }
-            self.next_char(); // skip past the newline
+            self.match_char('\n'); // skip past the newline
         }
         self.ok_token(TokenType::Comment)
     }
@@ -729,8 +729,18 @@ mod test {
             r#"
             # this is a comment
             # this is a comment, too
-            # foo, bar, baz"#,
+            # foo, bar, baz
+            #! this is a comment !#
+            #! this is a comment too !#
+            #!
+            * foo
+            * bar
+            * baz
+            !#"#,
 
+            (TokenType::Comment)
+            (TokenType::Comment)
+            (TokenType::Comment)
             (TokenType::Comment)
             (TokenType::Comment)
             (TokenType::Comment)
