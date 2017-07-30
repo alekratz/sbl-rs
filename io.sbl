@@ -3,8 +3,10 @@ foreign "libc.so.6" {
     int write [ int string int ]
     # int read [ int stack ]
     int close [ int ]
-    void perror [ string ]
+    # void perror [ string ]
+    int unlink [ string ]
 }
+
 
 O_WRONLY { 0o1 }
 O_CREAT { 0o100 }
@@ -13,27 +15,27 @@ O_TRUNC { 0o1000 }
 # Writes a single string to a file
 write-string {
     .fname .str
-    "opening file" !println
     0o644 O_CREAT O_TRUNC |
     O_WRONLY | fname open
-    ^ .fd "file descriptor: " !print ^println
+    ^ .fd
     0 < br {
-        "could not open file" perror
         .@ F
     }
     el {
         .@ 
-        "writing file" !println
         str !len str fd write
-        0 ^dump_stack < "checking characters written" !println br {
-            "could not open file" perror
+        0 <
+        br {
             .@ F
         }
         el {
-            "closing file" !println
             .@ fd close
             0 ==
         }
     }
 }
 
+# Writes all strings to a file, until the nil sigil is reached.
+write-lines { #! TODO !# }
+
+# 
