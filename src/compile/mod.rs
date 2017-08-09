@@ -1,4 +1,5 @@
 pub mod bytes;
+pub mod bake;
 
 use errors::*;
 
@@ -16,3 +17,4 @@ pub trait Optimize {
 }
 
 pub use self::bytes::*;
+pub use self::bake::*;

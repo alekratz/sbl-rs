@@ -9,12 +9,12 @@ use std::collections::HashMap;
 /// gathered, and then filled in.
 type BoringTable = HashMap<String, Option<Fun>>;
 
-pub struct CompileBytes {
-    ast: AST,
+pub struct CompileBytes<'ast> {
+    ast: &'ast mut AST,
     fun_table: BoringTable,
 }
 
-impl Compile for CompileBytes {
+impl<'ast> Compile for CompileBytes<'ast> {
     type Out = FunTable;
     /// Consumes the compiler, producing a `FunTable` on success or message on
     /// error.
@@ -52,8 +52,8 @@ impl Compile for CompileBytes {
     }
 }
 
-impl CompileBytes {
-    pub fn new(ast: AST) -> Self {
+impl<'ast> CompileBytes<'ast> {
+    pub fn new(ast: &'ast mut AST) -> Self {
         CompileBytes {
             ast,
             fun_table: BoringTable::new(),
