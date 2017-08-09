@@ -36,7 +36,10 @@ impl<'ast> Compile for CompileBytes<'ast> {
                         fun_name
                     );
                 }
-                let mut block = self.compile_block(&fun.block, 0)?;
+                let mut block = {
+                    let block_compiler = CompileBlock::new(&self.fun_table, &fun.block, 0);
+                    block_compiler.compile()?
+                };
                 block.push(Bc::ret(fun.tokens().into()));
                 let built_fun = UserFun::new(fun_name, block, fun.tokens().into());
 
@@ -124,78 +127,22 @@ impl<'ast> CompileBytes<'ast> {
             }
         }
         Ok(())
-    }
+    } 
+}
 
-    fn compile_block(&self, block: &Block, jmp_offset: usize) -> Result<BcBody> {
-        let mut body = vec![];
-        for stmt in &block.block {
-            match *stmt {
-                Stmt::Stack(ref s) => {
-                    body.append(&mut self.compile_stack_stmt(s)?
-                        .into_iter()
-                        .map(Some)
-                        .collect())
-                }
-                Stmt::Br(ref br) => {
-                    let start_addr = body.len();
-                    body.push(None); // placeholder for later
-                    body.append(&mut self.compile_block(
-                        &br.block,
-                        jmp_offset + start_addr + 1,
-                    )?
-                        .into_iter()
-                        .map(Some)
-                        .collect());
-                    let end_addr = if let &Some(ref el) = &br.el_stmt {
-                        let end_addr = body.len();
-                        body.push(None);
-                        body.append(&mut self.compile_block(
-                            &el.block,
-                            jmp_offset + end_addr + 1,
-                        )?
-                            .into_iter()
-                            .map(Some)
-                            .collect());
-                        body[end_addr] =
-                            Some(Bc::jmp(br.tokens().into(), Val::Int(body.len() as i64)));
-                        end_addr + 1
-                    } else {
-                        body.len()
-                    };
-                    body[start_addr] = Some(Bc::jmpz(
-                        br.tokens().into(),
-                        Val::Int((jmp_offset + end_addr) as i64),
-                    ));
-                }
-                Stmt::Loop(ref lp) => {
-                    let start_addr = body.len();
-                    body.push(None);
-                    body.append(&mut self.compile_block(
-                        &lp.block,
-                        jmp_offset + start_addr + 1,
-                    )?
-                        .into_iter()
-                        .map(Some)
-                        .collect());
-                    body.push(Some(
-                        Bc::jmp(lp.tokens().into(), Val::Int(start_addr as i64)),
-                    ));
-                    let end_addr = body.len();
-                    body[start_addr] = Some(Bc::jmpz(
-                        lp.tokens().into(),
-                        Val::Int((jmp_offset + end_addr) as i64),
-                    ));
-                }
-                Stmt::Bake(ref block) => {
-                    body.push(Some(Bc::bake(
-                        block.tokens().into(),
-                        Val::BakeBlock(block.block.clone()),
-                    )))
-                }
+pub struct CompileBlock<'ft, 'b> {
+    pub fun_table: &'ft BoringTable,
+    pub block: &'b Block,
+    pub jmp_offset: usize,
+}
 
-            }
+impl<'ft, 'b> CompileBlock<'ft, 'b> {
+    pub fn new(fun_table: &'ft BoringTable, block: &'b Block, jmp_offset: usize) -> Self {
+        CompileBlock {
+            fun_table,
+            block,
+            jmp_offset,
         }
-        Ok(body.into_iter().map(Option::unwrap).collect())
     }
 
     fn compile_stack_stmt(&self, stmt: &StackStmt) -> Result<BcBody> {
@@ -249,6 +196,89 @@ impl<'ast> CompileBytes<'ast> {
         }
     }
 }
+
+impl<'ft, 'b> Compile for CompileBlock<'ft, 'b> {
+    type Out = BcBody;
+    fn compile(self) -> Result<Self::Out> {
+        let mut body = vec![];
+        let jmp_offset = self.jmp_offset;
+        for stmt in &self.block.block {
+            match *stmt {
+                Stmt::Stack(ref s) => {
+                    body.append(&mut self.compile_stack_stmt(s)?
+                        .into_iter()
+                        .map(Some)
+                        .collect())
+                }
+                Stmt::Br(ref br) => {
+                    let start_addr = body.len();
+                    body.push(None); // placeholder for later
+                    let block_compiler =
+                        CompileBlock::new(self.fun_table, &br.block, jmp_offset + start_addr + 1);
+                    body.append(&mut block_compiler
+                        .compile()?
+                        .into_iter()
+                        .map(Some)
+                        .collect());
+                    let end_addr = if let &Some(ref el) = &br.el_stmt {
+                        let end_addr = body.len();
+                        body.push(None);
+                        let block_compiler = CompileBlock::new(
+                            self.fun_table,
+                            &el.block,
+                            jmp_offset + start_addr + 1,
+                        );
+                        body.append(&mut block_compiler
+                            .compile()?
+                            .into_iter()
+                            .map(Some)
+                            .collect());
+                        body[end_addr] =
+                            Some(Bc::jmp(br.tokens().into(), Val::Int(body.len() as i64)));
+                        end_addr + 1
+                    } else {
+                        body.len()
+                    };
+                    body[start_addr] = Some(Bc::jmpz(
+                        br.tokens().into(),
+                        Val::Int((jmp_offset + end_addr) as i64),
+                    ));
+                }
+                Stmt::Loop(ref lp) => {
+                    let start_addr = body.len();
+                    body.push(None);
+                    let block_compiler =
+                        CompileBlock::new(self.fun_table, &lp.block, jmp_offset + start_addr + 1);
+                    body.append(&mut block_compiler
+                        .compile()?
+                        .into_iter()
+                        .map(Some)
+                        .collect());
+                    body.push(Some(
+                        Bc::jmp(lp.tokens().into(), Val::Int(start_addr as i64)),
+                    ));
+                    let end_addr = body.len();
+                    body[start_addr] = Some(Bc::jmpz(
+                        lp.tokens().into(),
+                        Val::Int((jmp_offset + end_addr) as i64),
+                    ));
+                }
+                Stmt::Bake(ref block) => {
+                    body.push(Some(Bc::bake(
+                        block.tokens().into(),
+                        Val::BakeBlock(block.block.clone()),
+                    )))
+                }
+
+            }
+        }
+        Ok(body.into_iter().map(Option::unwrap).collect())
+    }
+}
+
+/*
+ * Optimizers
+ */
 
 /// An optimizer that inlines functions.
 pub struct OptimizeInline {

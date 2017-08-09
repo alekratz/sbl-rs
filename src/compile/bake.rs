@@ -75,6 +75,9 @@ impl Compile for BakeBytes {
                     .chain_err(|| format!("in `bake` statement in function `{}`", fun.name))
                     .chain_err(|| "recursive `bake` statements are not allowed");
             }
+
+            // go through all bake blocks, and compile them
+            for block in bake_blocks {}
         }
         unimplemented!()
     }
