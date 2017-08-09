@@ -264,6 +264,7 @@ pub enum Stmt {
     Stack(StackStmt),
     Br(BrStmt),
     Loop(LoopStmt),
+    Bake(BakeStmt),
 }
 
 impl ASTNode for Stmt {
@@ -272,6 +273,7 @@ impl ASTNode for Stmt {
             Stmt::Stack(ref s) => s.tokens(),
             Stmt::Br(ref s) => s.tokens(),
             Stmt::Loop(ref s) => s.tokens(),
+            Stmt::Bake(ref s) => s.tokens(),
         }
     }
 
@@ -335,6 +337,7 @@ macro_rules! from_stmt {
 from_stmt!(Stack, StackStmt);
 from_stmt!(Br, BrStmt);
 from_stmt!(Loop, LoopStmt);
+from_stmt!(Bake, BakeStmt);
 
 //
 // Stack statements
@@ -479,6 +482,17 @@ pub struct LoopStmt {
 block_stmt!(LoopStmt
             new => (block: Block)
             lookaheads => (TokenType::KwLoop));
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
+pub struct BakeStmt {
+    pub tokens: Tokens,
+    pub block: Block,
+}
+
+block_stmt!(BakeStmt
+            new => (block: Block)
+            lookaheads => (TokenType::KwBake));
 
 //
 // Top level statements
@@ -691,3 +705,4 @@ pub struct FilledAST {
     pub path: String,
 }
 */
+

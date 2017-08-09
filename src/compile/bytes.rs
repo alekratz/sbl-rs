@@ -182,6 +182,7 @@ impl CompileBytes {
                     body[start_addr] =
                         Some(Bc::jmpz(lp.tokens().into(), Val::Int((jmp_offset + end_addr) as i64)));
                 }
+                Stmt::Bake(_) => panic!("got Bake stmt when it should have been filtered out in the previous stage"),
             }
         }
         Ok(body.into_iter().map(Option::unwrap).collect())

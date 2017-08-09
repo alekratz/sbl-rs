@@ -235,6 +235,8 @@ impl<'c> Parser<'c> {
             Ok(Stmt::Loop(self.expect_loop_stmt()?))
         } else if self.can_match_any(StackStmt::lookaheads()) {
             Ok(Stmt::Stack(self.expect_stack_stmt()?))
+        } else if self.can_match_any(BakeStmt::lookaheads()) {
+            Ok(Stmt::Bake(self.expect_bake_stmt()?))
         } else {
             self.match_any(Stmt::lookaheads())?;
             unreachable!()
@@ -281,6 +283,13 @@ impl<'c> Parser<'c> {
         Ok(ElStmt::new(tokens, block))
     }
 
+    fn expect_bake_stmt(&mut self) -> Result<BakeStmt> {
+        let mut tokens = vec![self.match_any(BakeStmt::lookaheads())?.into_rc()];
+        let block = self.expect_block()?;
+        tokens.append_node(&block);
+        Ok(BakeStmt::new(tokens, block))
+    }
+
     fn expect_stack_stmt(&mut self) -> Result<StackStmt> {
         let mut tokens = vec![];
         let mut actions = vec![];
@@ -323,7 +332,7 @@ impl<'c> Parser<'c> {
                 }
                 tokens.push(self.match_token(TokenType::RBrack)?.into_rc());
                 Ok(Item::new(tokens, ItemType::Stack(items)))
-            }
+            },
             _ => Ok(token.into()),
         }
     }

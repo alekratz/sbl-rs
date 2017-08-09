@@ -68,6 +68,7 @@ pub enum TokenType {
     KwF,
     KwLoop,
     KwForeign,
+    KwBake,
 }
 
 impl Display for TokenType {
@@ -99,6 +100,7 @@ impl Display for TokenType {
             KwF => "F keyword",
             KwLoop => "loop keyword",
             KwForeign => "foreign keyword",
+            KwBake => "compile-time bake keyword",
         };
         write!(f, "{}", s)
     }
@@ -363,14 +365,14 @@ impl<'c> Tokenizer<'c> {
             while !(self.curr == Some('!') && self.next == Some('#')) {
                 self.next_char();
             }
-            self.match_char('!');
-            self.match_char('#'); // skip past the !#
+            self.match_char('!')?;
+            self.match_char('#')?; // skip past the !#
         }
         else {
             while self.curr.is_some() && self.curr != Some('\n') {
                 self.next_char();
             }
-            self.match_char('\n'); // skip past the newline
+            self.match_char('\n')?; // skip past the newline
         }
         self.ok_token(TokenType::Comment)
     }
@@ -463,6 +465,7 @@ impl<'c> Tokenizer<'c> {
                     "T" => TokenType::KwT,
                     "F" => TokenType::KwF,
                     "foreign" => TokenType::KwForeign,
+                    "bake" => TokenType::KwBake,
                 }
             };
         };
