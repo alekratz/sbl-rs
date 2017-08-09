@@ -1,7 +1,7 @@
 use vm::*;
 use syntax::*;
 use errors::*;
-use compile::{Compile, Optimize};
+use compile::{Compile, Optimize, BakeBytes};
 use std::rc::Rc;
 use std::collections::HashMap;
 
@@ -19,7 +19,10 @@ impl<'ast> Compile for CompileBytes<'ast> {
     /// Consumes the compiler, producing a `FunTable` on success or message on
     /// error.
     fn compile(mut self) -> Result<Self::Out> {
+        // set up the function table
         self.fill_boring_table()?;
+
+        // fill the entries for the function table
         for top in &self.ast.ast {
             if let &TopLevel::FunDef(ref fun) = top {
                 let fun_name = fun.name.clone();
@@ -43,12 +46,15 @@ impl<'ast> Compile for CompileBytes<'ast> {
                 );
             }
         }
-        Ok(
-            self.fun_table
-                .into_iter()
-                .map(|(k, v)| (k, v.unwrap()))
-                .collect(),
-        )
+
+        // run bake blocks
+        let mut fun_table = self.fun_table
+            .into_iter()
+            .map(|(k, v)| (k, v.unwrap()))
+            .collect();
+
+        let bake = BakeBytes::new(fun_table);
+        bake.compile()
     }
 }
 
@@ -72,47 +78,41 @@ impl<'ast> CompileBytes<'ast> {
         self
     }
 
+    /// Fills the function table with null values of functions that have yet to be compiled.
     fn fill_boring_table(&mut self) -> Result<()> {
-        // TODO : refactor and de-duplicate
+        /// Utility function that checks if a function has already been defined in the
+        /// table.
+        fn check_defined(name: &str, fun_table: &BoringTable) -> Result<()> {
+            if let Some(other) = fun_table.get(name) {
+                match *other {
+                    Some(Fun::ForeignFun(_)) |
+                    None => {
+                        // None means it's a function we inserted earlier
+                        return Err(
+                            format!("function `{}` has already been defined", name).into(),
+                        ) as Result<_>;
+                    }
+                    _ => {}
+                }
+            }
+            Ok(())
+        }
+
         for top in &self.ast.ast {
             match top {
                 &TopLevel::FunDef(ref fun) => {
-                    if let Some(other) = self.fun_table.get(&fun.name) {
-                        match *other {
-                            Some(Fun::ForeignFun(_)) |
-                            None => {
-                                // None means it's a function we inserted earlier
-                                return (Err(
-                                    format!(
-                                        "function `{}` has already been defined",
-                                        &fun.name
-                                    ).into(),
-                                ) as Result<_>)
-                                    .chain_err(|| fun.range());
-                            }
-                            _ => {}
-                        }
-                    }
+                    check_defined(&fun.name, &self.fun_table).chain_err(
+                        || fun.range(),
+                    )?;
                     self.fun_table.insert(fun.name.clone(), None);
                 }
                 &TopLevel::Foreign(ref foreign) => {
                     for frn_fun in &foreign.functions {
-                        if let Some(other) = self.fun_table.get(&frn_fun.name) {
-                            match *other {
-                                Some(Fun::ForeignFun(_)) |
-                                None => {
-                                    // None means it's a function we inserted earlier
-                                    return (Err(
-                                        format!(
-                                            "function `{}` has already been defined",
-                                            &frn_fun.name
-                                        ).into(),
-                                    ) as Result<_>)
-                                        .chain_err(|| frn_fun.range());
-                                }
-                                _ => {}
-                            }
-                        }
+                        check_defined(&frn_fun.name, &self.fun_table).chain_err(
+                            || {
+                                frn_fun.range()
+                            },
+                        )?;
                         self.fun_table.insert(
                             frn_fun.name.clone(),
                             Some(Fun::ForeignFun(frn_fun.clone())),
@@ -162,8 +162,10 @@ impl<'ast> CompileBytes<'ast> {
                     } else {
                         body.len()
                     };
-                    body[start_addr] =
-                        Some(Bc::jmpz(br.tokens().into(), Val::Int((jmp_offset + end_addr) as i64)));
+                    body[start_addr] = Some(Bc::jmpz(
+                        br.tokens().into(),
+                        Val::Int((jmp_offset + end_addr) as i64),
+                    ));
                 }
                 Stmt::Loop(ref lp) => {
                     let start_addr = body.len();
@@ -179,10 +181,18 @@ impl<'ast> CompileBytes<'ast> {
                         Bc::jmp(lp.tokens().into(), Val::Int(start_addr as i64)),
                     ));
                     let end_addr = body.len();
-                    body[start_addr] =
-                        Some(Bc::jmpz(lp.tokens().into(), Val::Int((jmp_offset + end_addr) as i64)));
+                    body[start_addr] = Some(Bc::jmpz(
+                        lp.tokens().into(),
+                        Val::Int((jmp_offset + end_addr) as i64),
+                    ));
                 }
-                Stmt::Bake(_) => panic!("got Bake stmt when it should have been filtered out in the previous stage"),
+                Stmt::Bake(ref block) => {
+                    body.push(Some(Bc::bake(
+                        block.tokens().into(),
+                        Val::BakeBlock(block.block.clone()),
+                    )))
+                }
+
             }
         }
         Ok(body.into_iter().map(Option::unwrap).collect())
@@ -347,6 +357,5 @@ impl OptimizeInline {
                 Fun::UserFun(Rc::new(UserFun::new(fname, new_body, tokens))),
             );
         }
-
     }
 }

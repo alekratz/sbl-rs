@@ -12,6 +12,7 @@ pub enum Val {
     String(String),
     Bool(bool),
     Stack(Vec<Val>),
+    BakeBlock(Block),
     Nil,
 }
 
@@ -25,6 +26,7 @@ impl Val {
             &Val::Bool(_) => other.is_bool(),
             &Val::Stack(_) => other.is_stack(),
             &Val::Nil => other.is_nil(),
+            &Val::BakeBlock(_) => other.is_bake_block(),
         }
     }
 
@@ -37,15 +39,23 @@ impl Val {
             &Val::Bool(_) => "bool",
             &Val::Stack(_) => "local stack",
             &Val::Nil => "nil",
+            &Val::BakeBlock(_) => "compile-time bake block",
         }
     }
 
     pub fn compare(&self, other: &Val) -> Result<Ordering> {
         if !self.matches(other) {
-            return Err(format!("attempted to compare a {} value against a {} value", self.type_string(), other.type_string()).into());
+            return Err(
+                format!(
+                    "attempted to compare a {} value against a {} value",
+                    self.type_string(),
+                    other.type_string()
+                ).into(),
+            );
         }
 
         match self {
+            &Val::BakeBlock(_) => panic!("bake blocks should not be available for comparison"),
             &Val::Int(i) => Ok(other.int().cmp(&i)),
             &Val::Ident(_) | &Val::String(_) | &Val::Bool(_) | &Val::Stack(_) | &Val::Nil => Err(
                 format!(
@@ -73,6 +83,7 @@ impl Display for Val {
                     v.iter().map(Val::to_string).collect::<Vec<_>>().join(",")
                 )
             }
+            &Val::BakeBlock(ref block) => write!(f, "bake {{ {:#?} }}", block),
             &Val::Nil => write!(f, "nil"),
         }
     }

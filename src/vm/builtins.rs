@@ -230,11 +230,9 @@ fn len_o(state: &mut State) -> Result<()> {
         let p = state.peek()?;
         if p.is_stack() {
             p.stack().len()
-        }
-        else if p.is_string() {
+        } else if p.is_string() {
             p.string().len()
-        }
-        else {
+        } else {
             return Err(
                 format!(
                     "expected TOS item to be stack or string; instead got {}",
@@ -252,11 +250,9 @@ fn len_c(state: &mut State) -> Result<()> {
         let p = state.pop()?;
         if p.is_stack() {
             p.stack().len()
-        }
-        else if p.is_string() {
+        } else if p.is_string() {
             p.string().len()
-        }
-        else {
+        } else {
             return Err(
                 format!(
                     "expected TOS item to be stack or string; instead got {}",
@@ -303,12 +299,10 @@ fn dump_stack(state: &mut State) -> Result<()> {
     for f in state.stack.iter().rev() {
         if c == 0 {
             eprintln!("   top: {:?}", f);
-        }
-        else if c == state.stack.len() - 1 {
+        } else if c == state.stack.len() - 1 {
             eprintln!("bottom: {:?}", f);
-        }
-        else {
-            eprintln!( "{:>6}: {:?}", c, f);
+        } else {
+            eprintln!("{:>6}: {:?}", c, f);
         }
         c += 1;
     }

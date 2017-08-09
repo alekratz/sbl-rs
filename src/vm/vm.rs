@@ -283,6 +283,11 @@ impl VM {
                         state.increment_pc();
                     }
                     BcType::Ret => break,
+                    BcType::Bake => {
+                        panic!(
+                            "bake instructions should be filtered out by the compiler before reaching the VM"
+                        )
+                    }
                 }
             }
         }

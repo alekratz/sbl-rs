@@ -19,18 +19,33 @@ pub struct UserFun {
     pub name: String,
     pub body: BcBody,
     pub tokens: Tokens,
+    pub contains_bake: bool,
 }
 
 impl UserFun {
     pub fn new(name: String, body: BcBody, tokens: Tokens) -> Self {
-        UserFun { name, body, tokens }
+        let contains_bake = tokens.contains_bake_token();
+        UserFun {
+            name,
+            body,
+            tokens,
+            contains_bake,
+        }
     }
 
     pub fn dump(&self) {
         let mut addr = 0;
         for bc in &self.body {
-            eprintln!("{:06} {:6} {}", addr, &bc.bc_type.to_string(),
-                if let Some(ref payload) = bc.val { format!("{:?}", payload) } else { format!("") });
+            eprintln!(
+                "{:06} {:6} {}",
+                addr,
+                &bc.bc_type.to_string(),
+                if let Some(ref payload) = bc.val {
+                    format!("{:?}", payload)
+                } else {
+                    format!("")
+                }
+            );
             addr += 1;
         }
     }

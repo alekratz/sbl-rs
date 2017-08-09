@@ -332,7 +332,7 @@ impl<'c> Parser<'c> {
                 }
                 tokens.push(self.match_token(TokenType::RBrack)?.into_rc());
                 Ok(Item::new(tokens, ItemType::Stack(items)))
-            },
+            }
             _ => Ok(token.into()),
         }
     }

@@ -140,6 +140,16 @@ test-stacks {
     .2
 }
 
+test-baked-calls {
+    bake { 
+        6 fact
+    }
+
+    bake {
+        test-baked-calls
+    }
+}
+
 main {
     "testing number functions" !println
     "-----" !println

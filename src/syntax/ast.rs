@@ -9,6 +9,7 @@ pub type Tokens = Vec<RcToken>;
 pub trait TokensVec {
     fn append_node<T: ASTNode>(&mut self, node: &T);
     fn range(&self) -> Range;
+    fn contains_bake_token(&self) -> bool;
 }
 
 impl TokensVec for Tokens {
@@ -21,6 +22,15 @@ impl TokensVec for Tokens {
         let first = self.first().unwrap().range();
         let last = self.last().unwrap().range();
         Range::new(first.start, last.end)
+    }
+
+    fn contains_bake_token(&self) -> bool {
+        for t in self {
+            if t.token_type() == TokenType::KwBake {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -165,7 +175,7 @@ impl From<Token> for Item {
             TokenType::BasedInt(base) => {
                 Item::new(
                     vec![other.into_rc()],
-                    ItemType::Int(i64::from_str_radix(&other_str[2 ..], base as u32).unwrap()),
+                    ItemType::Int(i64::from_str_radix(&other_str[2..], base as u32).unwrap()),
                 )
             }
             TokenType::Ident => {
@@ -705,4 +715,3 @@ pub struct FilledAST {
     pub path: String,
 }
 */
-

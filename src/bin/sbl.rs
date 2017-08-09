@@ -48,8 +48,7 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
     if !compile_only {
         let mut vm = VM::new(fun_table);
         vm.run()
-    }
-    else {
+    } else {
         Ok(())
     }
 }

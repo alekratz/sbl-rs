@@ -12,6 +12,7 @@ pub enum BcType {
     Jmp,
     Call,
     Ret,
+    Bake,
 }
 
 impl Display for BcType {
@@ -29,6 +30,7 @@ impl Display for BcType {
                 &BcType::Jmp => "JMP",
                 &BcType::Call => "CALL",
                 &BcType::Ret => "RET",
+                &BcType::Bake => "BAKE",
             }
         )
     }
@@ -118,8 +120,15 @@ impl Bc {
             val: None,
         }
     }
+
+    pub fn bake(tokens: Tokens, val: Val) -> Bc {
+        assert_matches!(val, Val::BakeBlock(_));
+        Bc {
+            bc_type: BcType::Bake,
+            tokens,
+            val: Some(val),
+        }
+    }
 }
 
 pub type BcBody = Vec<Bc>;
-
-
