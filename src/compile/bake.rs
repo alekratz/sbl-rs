@@ -3,6 +3,8 @@ use errors::*;
 use syntax::*;
 use vm::*;
 
+use std::collections::HashMap;
+
 pub struct BakeBytes {
     fun_table: FunTable,
 }
@@ -16,6 +18,11 @@ impl BakeBytes {
 impl Compile for BakeBytes {
     type Out = FunTable;
     fn compile(mut self) -> Result<Self::Out> {
+        let boring_table = self.fun_table
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (k, Some(v)))
+            .collect::<HashMap<_, _>>();
         // make sure that no functions being called contain bakes themselves
         for fun in self.fun_table.values().filter(|f| f.is_user_fun()) {
             let fun = fun.user_fun();
@@ -77,7 +84,9 @@ impl Compile for BakeBytes {
             }
 
             // go through all bake blocks, and compile them
-            for block in bake_blocks {}
+            for block in bake_blocks {
+                // TODO
+            }
         }
         unimplemented!()
     }

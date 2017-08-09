@@ -51,7 +51,7 @@ impl<'ast> Compile for CompileBytes<'ast> {
         }
 
         // run bake blocks
-        let mut fun_table = self.fun_table
+        let fun_table = self.fun_table
             .into_iter()
             .map(|(k, v)| (k, v.unwrap()))
             .collect();

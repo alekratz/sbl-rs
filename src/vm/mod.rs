@@ -9,6 +9,7 @@ pub use self::builtins::*;
 pub use self::val::*;
 pub use self::bc::*;
 
+use errors::*;
 use syntax::*;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -51,7 +52,6 @@ impl UserFun {
     }
 }
 
-#[derive(EnumIsA)]
 pub enum Fun {
     UserFun(Rc<UserFun>),
     ForeignFun(ForeignFn),
@@ -59,6 +59,10 @@ pub enum Fun {
 }
 
 impl Fun {
+    pub fn is_user_fun(&self) -> bool {
+        matches!(self, &Fun::UserFun(_))
+    }
+
     pub fn user_fun(&self) -> &UserFun {
         if let &Fun::UserFun(ref fun) = self {
             fun
@@ -67,6 +71,41 @@ impl Fun {
         }
     }
 }
+
+impl Clone for Fun {
+    fn clone(&self) -> Self {
+        match self {
+            &Fun::UserFun(ref fun) => Fun::UserFun(fun.clone()),
+            &Fun::ForeignFun(ref fun) => Fun::ForeignFun(fun.clone()),
+            &Fun::BuiltinFun(fun) => Fun::BuiltinFun(fun),
+        }
+    }
+}
+
+/*
+// see https://github.com/rust-lang/rust/issues/26264 as to why this doesn't work :|
+pub enum VmFun<F: 'static> where F: Fn(&mut State) -> Result<()> {
+    UserFun(Rc<UserFun>),
+    ForeignFun(ForeignFn),
+    BuiltinFun(F),
+}
+
+impl<F: 'static> VmFun<F> where F: Fn(&mut State) -> Result<()> {
+    pub fn is_user_fun(&self) -> bool {
+        matches!(self, &Fun::UserFun(_))
+    }
+
+    pub fn user_fun(&self) -> &UserFun {
+        if let &Fun::UserFun(ref fun) = self {
+            fun
+        } else {
+            panic!("Fun::user_fun() called on non-UserFun item")
+        }
+    }
+}
+
+pub type Fun = VmFun<&'static BuiltinFun>;
+*/
 
 pub type FunTable = HashMap<String, Fun>;
 pub type FunRcTable = HashMap<String, Rc<Fun>>;
