@@ -75,15 +75,16 @@ impl<'c> Parser<'c> {
             self.next_token()?;
             Ok(curr)
         } else {
-            let expected_types = token_types
+            let mut expected_types = token_types
                 .iter()
                 .map(|t| format!("`{}`", t))
-                .collect::<Vec<_>>()
-                .join(", ");
+                .collect::<Vec<_>>();
+            expected_types.sort();
+            expected_types.dedup();
             Err(
                 format!(
                     "expected any token of {}; got `{}` instead",
-                    expected_types,
+                    expected_types.join(", "),
                     curr.token_type()
                 ).into(),
             )
@@ -147,7 +148,7 @@ impl<'c> Parser<'c> {
             all.extend_from_slice(FunDef::lookaheads());
             all.extend_from_slice(Import::lookaheads());
             all.extend_from_slice(Foreign::lookaheads());
-            self.match_any(&all)?;
+            self.match_any(all.as_slice())?;
             unreachable!()
         }
     }
@@ -293,8 +294,14 @@ impl<'c> Parser<'c> {
     fn expect_stack_stmt(&mut self) -> Result<StackStmt> {
         let mut tokens = vec![];
         let mut actions = vec![];
-        while !self.can_match_any(&[TokenType::RBrace, TokenType::KwBr, TokenType::KwLoop]) &&
-            self.curr.is_some()
+        while !self.can_match_any(
+            &[
+                TokenType::RBrace,
+                TokenType::KwBr,
+                TokenType::KwLoop,
+                TokenType::KwBake,
+            ],
+        ) && self.curr.is_some()
         {
             let action = if tokens.len() > 0 {
                 self.expect_stack_action().chain_err(|| tokens.range())

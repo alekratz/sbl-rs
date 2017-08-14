@@ -39,7 +39,7 @@ lazy_static! {
 }
 const IDENT_CHARS: &str = "_!@$%^&|*-+/=<>abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(Eq, Hash, PartialEq, Copy, Clone, Debug)]
 pub enum TokenType {
     Comment,
 

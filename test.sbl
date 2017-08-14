@@ -141,19 +141,24 @@ test-stacks {
 }
 
 test-baked-calls {
+    bake { "running baked functions ..." !println }
     bake {
-        "computing factorial at compile-time..." !println
+        "baking factorial call" !println
         6 fact
     }
+
+    "here's a baked factorial: " !print
     !println
-    #!
+
     bake {
-        test-baked-calls
+        "baking basic stack functions" !println
+        15
     }
-    !#
+    "here's a baked stack item: " !print
+    !println
 }
 
-main {
+run-tests {
     "testing number functions" !println
     "-----" !println
     test-numbers
@@ -198,4 +203,8 @@ main {
     "deleting file" !println
     "test.txt" unlink
     0 >= "status: " !print !println
+}
+
+main {
+    run-tests
 }
