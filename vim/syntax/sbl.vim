@@ -18,7 +18,7 @@ syn match sblForeignFunction '[a-zA-Z_][a-zA-Z_0-9]*' containedin=sblForeignBloc
 " Code blocks
 syn region sblBlock start='{' end='}' fold contains=sblKeywords,sblPop,sblComment,sblIdent,@sblLiteral
 syn keyword sblKeywords contained < > <= >= == !=
-syn keyword sblKeywords contained br el loop nextgroup=sblBlock skipwhite
+syn keyword sblKeywords contained br el loop bake nextgroup=sblBlock skipwhite
 syn match sblNil '@' contained
 syn match sblIdent '[a-zA-Z_!$%^&|*+/=<>]\+' contained
 syn match sblPop /\./ nextgroup=sblNil,sblNumber,sblIdent
