@@ -1,20 +1,30 @@
-# Repeats the top item of the stack N times.
-# Args (top to bottom):
-# N: the number of times to duplicate it
-# X: the item to duplicate
-rep {
-    .n .x n
-    loop {
-       1 - .n x n
+# basic.sbl
+# Basic language functions
+
+# Reverses a local stack
+!reverse {
+    [] .st
+    ^len 0 > loop {
+        .@
+        ^pop .popped 
+        st popped ^push
+        .st
+        ^len 0 >
     }
-    .n
+    .2
+    st
 }
 
-# Finds -N
-ng {
-    .x 0 x -
-}
-
-u- {
-    .x 0 x -
+# Concatenates two local stacks
+!concat {
+    .first .second
+    second !reverse .second
+    second !len 0 > loop {
+        .@
+        second ^pop
+        .item .second first item ^push
+        .first second !len 0 >
+    }
+    .@
+    first
 }
