@@ -141,6 +141,12 @@ impl State {
     }
 }
 
+impl From<VM> for State {
+    fn from(other: VM) -> Self {
+        other.state.into_inner()
+    }
+}
+
 pub struct VM {
     fun_table: FunRcTable,
     state: RefCell<State>,
@@ -173,7 +179,7 @@ impl VM {
         self.invoke("main")
     }
 
-    fn invoke(&mut self, fun_name: &str) -> Result<()> {
+    pub fn invoke(&mut self, fun_name: &str) -> Result<()> {
         let fun = self.fun_table
             .get(fun_name)
             .expect(&format!(
@@ -228,6 +234,7 @@ impl VM {
                         state.push(stack);
                         state.increment_pc();
                     }
+                    // TODO : PushA
                     BcType::Pop => {
                         let mut state = self.state.borrow_mut();
                         let tos = state.pop()?;
@@ -241,14 +248,14 @@ impl VM {
                     }
                     BcType::PopN => {
                         let mut state = self.state.borrow_mut();
-                        let i = val.unwrap().int();
+                        let i = *val.unwrap().as_int();
                         state.popn(i)?;
                         state.increment_pc();
                     }
                     BcType::Load => {
                         let mut state = self.state.borrow_mut();
                         let val = val.unwrap();
-                        let ident = val.ident();
+                        let ident = val.as_ident();
                         let val = state.load(&ident)?.clone();
                         state.push(val);
                         state.increment_pc();
@@ -264,7 +271,7 @@ impl VM {
                             }
                         };
                         if jump_taken {
-                            let addr = val.unwrap().int() as usize;
+                            let addr = *val.unwrap().as_int() as usize;
                             state.set_pc(addr);
                         } else {
                             state.increment_pc();
@@ -272,12 +279,12 @@ impl VM {
                     }
                     BcType::Jmp => {
                         let mut state = self.state.borrow_mut();
-                        let addr = val.unwrap().int() as usize;
+                        let addr = *val.unwrap().as_int() as usize;
                         state.set_pc(addr);
                     }
                     BcType::Call => {
                         let val = val.unwrap();
-                        let fun_name = val.ident();
+                        let fun_name = val.as_ident();
                         self.invoke(fun_name)?;
                         let mut state = self.state.borrow_mut();
                         state.increment_pc();

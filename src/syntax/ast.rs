@@ -508,7 +508,7 @@ block_stmt!(BakeStmt
 // Top level statements
 //
 
-#[derive(EnumGetters, Clone, PartialEq, Debug)]
+#[derive(EnumAsGetters, Clone, PartialEq, Debug)]
 pub enum TopLevel {
     FunDef(FunDef),
     Import(Import),

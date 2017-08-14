@@ -127,7 +127,7 @@ impl<'ast> CompileBytes<'ast> {
             }
         }
         Ok(())
-    } 
+    }
 }
 
 pub struct CompileBlock<'ft, 'b> {
@@ -328,7 +328,7 @@ impl OptimizeInline {
     fn determine_inlines(&mut self) {
         for (ref fname, ref fun) in &self.fun_table {
             if Self::should_inline(fun) {
-                let ref fun_body = fun.user_fun().body;
+                let ref fun_body = fun.as_user_fun().body;
                 // this gets all except the last instruction, which is the 'RET' instruction which
                 // messes things up a little bit.
                 let body_clone = fun_body
@@ -351,7 +351,9 @@ impl OptimizeInline {
                 if !self.to_inline.contains_key(fname.as_str())
                     // this checks if a user function has a call to one of the inlines
                     && fun.is_user_fun() &&
-                    fun.user_fun().body.iter().any(|bc| self.is_inline_call(bc))
+                    fun.as_user_fun().body.iter().any(
+                        |bc| self.is_inline_call(bc),
+                    )
                 {
                     to_optimize.push(fname.to_string());
                 }
@@ -363,10 +365,10 @@ impl OptimizeInline {
             let mut new_body = vec![];
             {
                 let fun = self.fun_table.get(&fname).unwrap();
-                let ref body = (fun as &Fun).user_fun().body;
+                let ref body = (fun as &Fun).as_user_fun().body;
                 for bc in body {
                     if self.is_inline_call(bc) {
-                        let call_name = bc.clone().val.unwrap().ident().to_string();
+                        let call_name = bc.clone().val.unwrap().as_ident().to_string();
                         new_body.append(&mut self.to_inline.get(&call_name).unwrap().clone());
                     } else {
                         new_body.push(bc.clone());
@@ -377,7 +379,7 @@ impl OptimizeInline {
             let tokens = self.fun_table
                 .get(&fname)
                 .unwrap()
-                .user_fun()
+                .as_user_fun()
                 .tokens
                 .clone();
 

@@ -141,13 +141,16 @@ test-stacks {
 }
 
 test-baked-calls {
-    bake { 
+    bake {
+        "computing factorial at compile-time..." !println
         6 fact
     }
-
+    !println
+    #!
     bake {
         test-baked-calls
     }
+    !#
 }
 
 main {
@@ -172,6 +175,12 @@ main {
     "testing stacks" !println
     "-----" !println
     test-stacks
+
+    "\n==========\n" !println
+    
+    "testing baked calls" !println
+    "-----" !println
+    test-baked-calls
 
     "\n==========\n" !println
 

@@ -10,6 +10,7 @@ extern crate matches;
 extern crate enum_methods;
 extern crate libc;
 extern crate libffi;
+extern crate itertools;
 
 pub mod syntax;
 pub mod compile;

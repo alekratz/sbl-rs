@@ -229,9 +229,9 @@ fn len_o(state: &mut State) -> Result<()> {
     let len = {
         let p = state.peek()?;
         if p.is_stack() {
-            p.stack().len()
+            p.as_stack().len()
         } else if p.is_string() {
-            p.string().len()
+            p.as_string().len()
         } else {
             return Err(
                 format!(
@@ -249,9 +249,9 @@ fn len_c(state: &mut State) -> Result<()> {
     let len = {
         let p = state.pop()?;
         if p.is_stack() {
-            p.stack().len()
+            p.as_stack().len()
         } else if p.is_string() {
-            p.string().len()
+            p.as_string().len()
         } else {
             return Err(
                 format!(

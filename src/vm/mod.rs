@@ -9,7 +9,6 @@ pub use self::builtins::*;
 pub use self::val::*;
 pub use self::bc::*;
 
-use errors::*;
 use syntax::*;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -52,6 +51,7 @@ impl UserFun {
     }
 }
 
+#[derive(EnumIsA)]
 pub enum Fun {
     UserFun(Rc<UserFun>),
     ForeignFun(ForeignFn),
@@ -59,15 +59,11 @@ pub enum Fun {
 }
 
 impl Fun {
-    pub fn is_user_fun(&self) -> bool {
-        matches!(self, &Fun::UserFun(_))
-    }
-
-    pub fn user_fun(&self) -> &UserFun {
+    pub fn as_user_fun(&self) -> &UserFun {
         if let &Fun::UserFun(ref fun) = self {
             fun
         } else {
-            panic!("Fun::user_fun() called on non-UserFun item")
+            panic!("Fun::as_user_fun() called on non-UserFun item")
         }
     }
 }

@@ -4,7 +4,7 @@ use syntax::*;
 use std::cmp::Ordering;
 use std::fmt::{self, Formatter, Display};
 
-#[derive(EnumGetters, EnumIsA, PartialEq, Clone, Debug)]
+#[derive(EnumAsGetters, EnumIsA, PartialEq, Clone, Debug)]
 pub enum Val {
     Int(i64),
     Ident(String),
@@ -56,14 +56,14 @@ impl Val {
 
         match self {
             &Val::BakeBlock(_) => panic!("bake blocks should not be available for comparison"),
-            &Val::Int(i) => Ok(other.int().cmp(&i)),
+            &Val::Int(i) => Ok(other.as_int().cmp(&i)),
             &Val::Ident(_) | &Val::String(_) | &Val::Bool(_) | &Val::Stack(_) | &Val::Nil => Err(
                 format!(
                     "{} types may not be compared with ordinal operators",
                     self.type_string()
                 ).into(),
             ),
-            &Val::Char(c) => Ok(other.char().cmp(&c)),
+            &Val::Char(c) => Ok(other.as_char().cmp(&c)),
         }
     }
 }
