@@ -6,14 +6,29 @@
     [] .st
     ^len 0 > loop {
         .@
-        ^pop .popped 
-        st popped ^push
+        ^pop
+        .popped st popped ^push
         .st
         ^len 0 >
     }
     .2
     st
 }
+
+#!
+!reverse {
+    [] .rev
+    ^len 0 > loop {
+        .@
+        ^pop
+        .old rev ^push
+        .rev old ^len
+        0 >
+    }
+    .@
+    rev
+}
+!#
 
 # Concatenates two local stacks
 !concat {
