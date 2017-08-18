@@ -79,7 +79,7 @@ pub fn build_bake_call_graph(fun_table: &IRFunTable) -> Graph<&str, usize> {
         if let &IRFun::UserFun(ref fun) = fun {
             for ir in &fun.body {
                 if ir.ir_type == IRType::Bake {
-                    let block = ir.val
+                    let (_, block) = ir.val
                         .as_ref()
                         .unwrap()
                         .as_bake_block();

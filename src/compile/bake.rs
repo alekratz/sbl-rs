@@ -7,61 +7,59 @@ use ir::*;
 
 use itertools::interleave;
 use petgraph::Direction;
-use petgraph::algo::is_cyclic_directed;
-use petgraph::visit::Dfs;
+use petgraph::algo::{is_cyclic_directed, toposort};
+use petgraph::visit::Bfs;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub struct BakeIR {
-    fun_table: IRFunTable,
+pub struct BakeBC {
+    fun_table: BCFunTable,
 }
 
-impl BakeIR {
-    pub fn new(fun_table: IRFunTable) -> Self {
-        BakeIR { fun_table }
+impl BakeBC {
+    pub fn new(fun_table: BCFunTable) -> Self {
+        BakeBC { fun_table }
     }
 }
 
-impl Compile for BakeIR {
-    type Out = IRFunTable;
+impl Compile for BakeBC {
+    type Out = BCFunTable;
     fn compile(self) -> Result<Self::Out> {
-        let bake_graph = build_bake_call_graph(&self.fun_table);
-        if is_cyclic_directed(&bake_graph) {
-            return Err("there were one or more cycles detected in bake blocks".into());
-        }
-
-        // find all leaves and compile them first
-        let leaves = bake_graph.node_indices()
-            .filter(|node| bake_graph.neighbors_directed(*node, Direction::Incoming).count() == 0)
-            .collect::<Vec<_>>();
-        
-        println!("found the following leaves in the bake statement graph:");
-        for l in leaves {
-            println!("    {}", &bake_graph[l]);
-        }
-
+            /*
+        // Build the boring table
         let boring_table = self.fun_table
             .clone()
             .into_iter()
             .map(|(k, v)| (k, Some(v)))
             .collect::<HashMap<_, _>>();
-        // make sure that no functions being called contain bakes themselves
+        // Build the bake graph
+        let bake_graph = build_bake_call_graph(&self.fun_table);
+        let dependency_order = match toposort(&bake_graph, None) {
+            Err(cycle) => {
+                return Err(format!("bake call cycle detected in function `{}`", &bake_graph[cycle.node_id()]).into());
+            }
+            Ok(v) => v,
+        };
+
+        for fun_index in dependency_order {
+        }
+
         for fun in self.fun_table.values().filter(|f| f.is_user_fun()) {
             let mut fun = fun.as_user_fun().clone();
             // gets a list of all the bake blocks for this function
             let bake_blocks = fun.body
                 .iter()
-                .filter_map(|b| if b.ir_type == IRType::Bake { b.val.clone() } else { None })
-                .filter_map(|v| if let IRVal::BakeBlock(b) = v { Some(b) } else { None })
+                .filter_map(|b| if b.bc_type == BCType::Bake { b.val.clone() } else { None })
+                .filter_map(|v| if let BCVal::BakeBlock(b) = v { Some(b) } else { None })
                 .collect::<Vec<_>>();
 
             let baked = bake_blocks
                 .into_iter()
                 .map(|block| {
                     let compiled = {
-                        let compile_block = CompileIRBlock::new(&boring_table, &block, 0);
+                        let compile_block = CompileBCBlock::new(&boring_table, &block, 0);
                         compile_block.compile().map(|mut b| {
-                            b.push(IR::ret(block.tokens().into()));
+                            b.push(BC::ret(block.tokens().into()));
                             b
                         })
                     };
@@ -89,16 +87,16 @@ impl Compile for BakeIR {
                     let baked_name = format!("< baked block defined in {} >", block.range());
                     let block_tokens: Tokens = block.tokens().into();
                     let baked_fun =
-                        IRUserFun::new(baked_name.clone(), compiled, block_tokens.clone());
+                        BCUserFun::new(baked_name.clone(), compiled, block_tokens.clone());
                     let mut baked_table = self.fun_table.clone();
-                    baked_table.insert(baked_name.clone(), IRFun::UserFun(baked_fun));
+                    baked_table.insert(baked_name.clone(), BCFun::UserFun(baked_fun));
                     let mut vm = VM::new(baked_table);
                     match vm.invoke(&baked_name) {
                         Ok(_) => {
                             let vm_state: State = vm.into();
                             Ok(vm_state.stack
                                     .into_iter()
-                                    .map(|val| IR::push(block_tokens.clone(), val.into()))
+                                    .map(|val| BC::push(block_tokens.clone(), val.into()))
                                     .collect::<Vec<_>>())
                         }
                         Err(e) => Err(e),
@@ -117,7 +115,7 @@ impl Compile for BakeIR {
                 .map(Result::unwrap)
                 .collect::<Vec<_>>();
             let body = fun.body
-                .split(|b| b.ir_type == IRType::Bake)
+                .split(|b| b.bc_type == BCType::Bake)
                 .map(|b| b.to_vec())
                 .collect::<Vec<_>>();
             assert_eq!(body.len() - 1, baked_compiled.len());
@@ -126,7 +124,7 @@ impl Compile for BakeIR {
                 .into_iter()
                 .flat_map(id)
                 .collect::<Vec<_>>();
-            boring_table.insert(fun.name.clone(), Some(IRFun::UserFun(fun)));
+            boring_table.insert(fun.name.clone(), Some(BCFun::UserFun(fun)));
             */
         }
         Ok(
@@ -135,5 +133,7 @@ impl Compile for BakeIR {
                 .map(|(k, v)| (k, v.unwrap()))
                 .collect(),
         )
+                */
+                unimplemented!();
     }
 }

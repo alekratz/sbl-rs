@@ -124,5 +124,5 @@ impl<F: 'static> VmFun<F> where F: Fn(&mut State) -> Result<()> {
 pub type Fun = VmFun<&'static BuiltinFun>;
 */
 
-pub type FunTable = HashMap<String, Fun>;
+pub type BCFunTable = HashMap<String, Fun>;
 pub type FunRcTable = HashMap<String, Rc<Fun>>;

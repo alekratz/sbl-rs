@@ -15,23 +15,23 @@ impl CompileBytes {
 }
 
 impl Compile for CompileBytes {
-    type Out = FunTable;
+    type Out = BCFunTable;
     fn compile(self) -> Result<Self::Out> {
         Ok(self.fun_table
             .into_iter()
             .map(|(k, v)| (k, v.into()))
-            .collect::<FunTable>())
+            .collect::<BCFunTable>())
     }
 }
 
 /// An optimizer that inlines functions.
 pub struct OptimizeBCInline {
-    fun_table: FunTable,
+    fun_table: BCFunTable,
     to_inline: HashMap<String, BCBody>,
 }
 
 impl Optimize for OptimizeBCInline {
-    type Out = FunTable;
+    type Out = BCFunTable;
 
     fn optimize(mut self) -> Self::Out {
         self.determine_inlines();
@@ -42,7 +42,7 @@ impl Optimize for OptimizeBCInline {
 }
 
 impl OptimizeBCInline {
-    pub fn new(fun_table: FunTable) -> Self {
+    pub fn new(fun_table: BCFunTable) -> Self {
         OptimizeBCInline {
             fun_table,
             to_inline: HashMap::new(),
@@ -60,7 +60,7 @@ impl OptimizeBCInline {
     }
 
     fn is_inline_call(&self, bc: &BC) -> bool {
-        if let &Some(Val::Ident(ref fname)) = &bc.val {
+        if let &Some(BCVal::Ident(ref fname)) = &bc.val {
             bc.bc_type == BCType::Call && self.to_inline.contains_key(fname)
         } else {
             false

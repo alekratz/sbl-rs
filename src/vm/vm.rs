@@ -7,12 +7,12 @@ use std::cell::RefCell;
 pub struct FunState {
     pub fun: Rc<UserFun>,
     pub pc: usize,
-    pub locals: HashMap<String, Val>,
+    pub locals: HashMap<String, BCVal>,
     // TODO : callsite
 }
 
 impl FunState {
-    pub fn load(&self, name: &str) -> Result<&Val> {
+    pub fn load(&self, name: &str) -> Result<&BCVal> {
         if let Some(ref val) = self.locals.get(name) {
             Ok(val)
         } else {
@@ -22,7 +22,7 @@ impl FunState {
         }
     }
 
-    pub fn store(&mut self, name: String, val: Val) {
+    pub fn store(&mut self, name: String, val: BCVal) {
         self.locals.insert(name.to_string(), val);
     }
 }
@@ -38,7 +38,7 @@ impl From<Rc<UserFun>> for FunState {
 }
 
 pub struct State {
-    pub stack: Vec<Val>,
+    pub stack: Vec<BCVal>,
     pub call_stack: Vec<FunState>,
     pub dl_handles: HashMap<String, *mut c_void>,
     pub foreign_functions: HashMap<String, *mut c_void>,
@@ -54,17 +54,17 @@ impl State {
         }
     }
 
-    pub fn load(&self, name: &str) -> Result<&Val> {
+    pub fn load(&self, name: &str) -> Result<&BCVal> {
         let caller = self.current_fun();
         caller.load(name)
     }
 
-    pub fn store(&mut self, name: String, val: Val) {
+    pub fn store(&mut self, name: String, val: BCVal) {
         let mut caller = self.current_fun_mut();
         caller.store(name, val);
     }
 
-    pub fn peek(&self) -> Result<&Val> {
+    pub fn peek(&self) -> Result<&BCVal> {
         if let Some(val) = self.stack.last() {
             Ok(val)
         } else {
@@ -72,11 +72,11 @@ impl State {
         }
     }
 
-    pub fn push(&mut self, val: Val) {
+    pub fn push(&mut self, val: BCVal) {
         self.stack.push(val)
     }
 
-    pub fn pop(&mut self) -> Result<Val> {
+    pub fn pop(&mut self) -> Result<BCVal> {
         if let Some(val) = self.stack.pop() {
             Ok(val)
         } else {
@@ -154,7 +154,7 @@ pub struct VM {
 }
 
 impl VM {
-    pub fn new(fun_table: FunTable) -> Self {
+    pub fn new(fun_table: BCFunTable) -> Self {
         let mut rc_table = FunRcTable::new();
         for (k, v) in fun_table {
             rc_table.insert(k, Rc::new(v));
@@ -244,7 +244,7 @@ impl VM {
                         let mut state = self.state.borrow_mut();
                         let item = state.pop()?;
                         let mut stack = state.pop()?;
-                        if let Val::Stack(ref mut st) = stack {
+                        if let BCVal::Stack(ref mut st) = stack {
                             st.push(item);
                         } else {
                             // This should - for now - never occur
@@ -259,8 +259,8 @@ impl VM {
                         let tos = state.pop()?;
                         let val = val.unwrap();
                         match val {
-                            Val::Ident(ident) => state.store(ident, tos),
-                            Val::Nil => { /* do nothing */ }
+                            BCVal::Ident(ident) => state.store(ident, tos),
+                            BCVal::Nil => { /* do nothing */ }
                             _ => unreachable!(),
                         }
                         state.increment_pc();
@@ -284,8 +284,8 @@ impl VM {
                         let jump_taken = {
                             let tos = state.peek()?;
                             match tos {
-                                &Val::Bool(false) |
-                                &Val::Nil => true,
+                                &BCVal::Bool(false) |
+                                &BCVal::Nil => true,
                                 _ => false,
                             }
                         };

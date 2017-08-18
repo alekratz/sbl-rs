@@ -2,14 +2,14 @@ use ir::*;
 use vm::*;
 use syntax::*;
 use errors::*;
-use compile::{Compile, BakeIR};
+use compile::Compile;
 use std::collections::HashMap;
 
 /*
  * IR compiler
  */
 
-/// A BoringTable is the predecessor to a FunTable; function names are first
+/// A BoringTable is the predecessor to a BCFunTable; function names are first
 /// gathered, and then filled in.
 type BoringTable = HashMap<String, Option<IRFun>>;
 
@@ -20,7 +20,7 @@ pub struct CompileIR<'ast> {
 
 impl<'ast> Compile for CompileIR<'ast> {
     type Out = IRFunTable;
-    /// Consumes the compiler, producing a `FunTable` on success or message on
+    /// Consumes the compiler, producing a `BCFunTable` on success or message on
     /// error.
     fn compile(mut self) -> Result<Self::Out> {
         // set up the function table
@@ -54,14 +54,10 @@ impl<'ast> Compile for CompileIR<'ast> {
             }
         }
 
-        // run bake blocks
-        let fun_table = self.fun_table
+        Ok(self.fun_table
             .into_iter()
             .map(|(k, v)| (k, v.unwrap()))
-            .collect();
-
-        let bake = BakeIR::new(fun_table);
-        bake.compile()
+            .collect())
     }
 }
 
@@ -270,7 +266,10 @@ impl<'ft, 'b> Compile for CompileIRBlock<'ft, 'b> {
                 Stmt::Bake(ref block) => {
                     body.push(Some(IR::bake(
                         block.tokens().into(),
-                        IRVal::BakeBlock(block.block.clone()),
+                        IRVal::BakeBlock({
+                            let bake_compiler = CompileIRBlock::new(self.fun_table, &block.block, 0);
+                            bake_compiler.compile()?
+                        }, (&block.block).clone()),
                     )))
                 }
 

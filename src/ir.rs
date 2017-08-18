@@ -14,7 +14,7 @@ pub enum IRVal {
     Bool(bool),
     Stack(Vec<IRVal>),
     Nil,
-    BakeBlock(Block),
+    BakeBlock(IRBody, Block),
 }
 
 impl IRVal {
@@ -27,7 +27,7 @@ impl IRVal {
             &IRVal::Bool(_) => other.is_bool(),
             &IRVal::Stack(_) => other.is_stack(),
             &IRVal::Nil => other.is_nil(),
-            &IRVal::BakeBlock(_) => other.is_bake_block(),
+            &IRVal::BakeBlock(_, _) => other.is_bake_block(),
         }
     }
 
@@ -40,7 +40,7 @@ impl IRVal {
             &IRVal::Bool(_) => "bool",
             &IRVal::Stack(_) => "local stack",
             &IRVal::Nil => "nil",
-            &IRVal::BakeBlock(_) => "bake block",
+            &IRVal::BakeBlock(_, _) => "bake block",
         }
     }
 
@@ -64,7 +64,7 @@ impl IRVal {
                 ).into(),
             ),
             &IRVal::Char(c) => Ok(other.as_char().cmp(&c)),
-            &IRVal::BakeBlock(_) => {
+            &IRVal::BakeBlock(_, _) => {
                 panic!("bake blocks may not be formatted");
             },
         }
@@ -87,21 +87,21 @@ impl Display for IRVal {
                 )
             }
             &IRVal::Nil => write!(f, "nil"),
-            &IRVal::BakeBlock(ref b) => write!(f, "bake block {{ {:#?} }}", b),
+            &IRVal::BakeBlock(ref b, _) => write!(f, "bake block {{ {:#?} }}", b),
         }
     }
 }
 
-impl From<Val> for IRVal {
-    fn from(other: Val) -> Self {
+impl From<BCVal> for IRVal {
+    fn from(other: BCVal) -> Self {
         match other {
-            Val::Int(i) => IRVal::Int(i),
-            Val::Ident(i) => IRVal::Ident(i),
-            Val::Char(c) => IRVal::Char(c),
-            Val::String(s) => IRVal::String(s),
-            Val::Bool(b) => IRVal::Bool(b),
-            Val::Stack(s) => IRVal::Stack(s.into_iter().map(Val::into).collect()),
-            Val::Nil => IRVal::Nil,
+            BCVal::Int(i) => IRVal::Int(i),
+            BCVal::Ident(i) => IRVal::Ident(i),
+            BCVal::Char(c) => IRVal::Char(c),
+            BCVal::String(s) => IRVal::String(s),
+            BCVal::Bool(b) => IRVal::Bool(b),
+            BCVal::Stack(s) => IRVal::Stack(s.into_iter().map(BCVal::into).collect()),
+            BCVal::Nil => IRVal::Nil,
         }
     }
 }
@@ -247,7 +247,7 @@ impl IR {
     }
 
     pub fn bake(tokens: Tokens, val: IRVal) -> IR {
-        assert_matches!(val, IRVal::BakeBlock(_));
+        assert_matches!(val, IRVal::BakeBlock(_, _));
         IR {
             ir_type: IRType::Bake,
             tokens,
@@ -323,3 +323,4 @@ impl Clone for IRFun {
 }
 
 pub type IRFunTable = HashMap<String, IRFun>;
+

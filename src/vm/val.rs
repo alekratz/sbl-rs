@@ -5,42 +5,42 @@ use std::cmp::Ordering;
 use std::fmt::{self, Formatter, Display};
 
 #[derive(EnumAsGetters, EnumIsA, PartialEq, Clone, Debug)]
-pub enum Val {
+pub enum BCVal {
     Int(i64),
     Ident(String),
     Char(char),
     String(String),
     Bool(bool),
-    Stack(Vec<Val>),
+    Stack(Vec<BCVal>),
     Nil,
 }
 
-impl Val {
+impl BCVal {
     pub fn matches(&self, other: &Self) -> bool {
         match self {
-            &Val::Int(_) => other.is_int(),
-            &Val::Ident(_) => other.is_ident(),
-            &Val::Char(_) => other.is_char(),
-            &Val::String(_) => other.is_string(),
-            &Val::Bool(_) => other.is_bool(),
-            &Val::Stack(_) => other.is_stack(),
-            &Val::Nil => other.is_nil(),
+            &BCVal::Int(_) => other.is_int(),
+            &BCVal::Ident(_) => other.is_ident(),
+            &BCVal::Char(_) => other.is_char(),
+            &BCVal::String(_) => other.is_string(),
+            &BCVal::Bool(_) => other.is_bool(),
+            &BCVal::Stack(_) => other.is_stack(),
+            &BCVal::Nil => other.is_nil(),
         }
     }
 
     pub fn type_string(&self) -> &'static str {
         match self {
-            &Val::Int(_) => "int",
-            &Val::Ident(_) => "identifier",
-            &Val::Char(_) => "char",
-            &Val::String(_) => "string",
-            &Val::Bool(_) => "bool",
-            &Val::Stack(_) => "local stack",
-            &Val::Nil => "nil",
+            &BCVal::Int(_) => "int",
+            &BCVal::Ident(_) => "identifier",
+            &BCVal::Char(_) => "char",
+            &BCVal::String(_) => "string",
+            &BCVal::Bool(_) => "bool",
+            &BCVal::Stack(_) => "local stack",
+            &BCVal::Nil => "nil",
         }
     }
 
-    pub fn compare(&self, other: &Val) -> Result<Ordering> {
+    pub fn compare(&self, other: &BCVal) -> Result<Ordering> {
         if !self.matches(other) {
             return Err(
                 format!(
@@ -52,49 +52,49 @@ impl Val {
         }
 
         match self {
-            &Val::Int(i) => Ok(other.as_int().cmp(&i)),
-            &Val::Ident(_) | &Val::String(_) | &Val::Bool(_) | &Val::Stack(_) | &Val::Nil => Err(
+            &BCVal::Int(i) => Ok(other.as_int().cmp(&i)),
+            &BCVal::Ident(_) | &BCVal::String(_) | &BCVal::Bool(_) | &BCVal::Stack(_) | &BCVal::Nil => Err(
                 format!(
                     "{} types may not be compared with ordinal operators",
                     self.type_string()
                 ).into(),
             ),
-            &Val::Char(c) => Ok(other.as_char().cmp(&c)),
+            &BCVal::Char(c) => Ok(other.as_char().cmp(&c)),
         }
     }
 }
 
-impl Display for Val {
+impl Display for BCVal {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            &Val::Int(i) => write!(f, "{}", i),
-            &Val::Ident(ref s) => write!(f, "{}", s),
-            &Val::Char(c) => write!(f, "{}", c),
-            &Val::String(ref s) => write!(f, "{}", s),
-            &Val::Bool(b) => write!(f, "{}", b),
-            &Val::Stack(ref v) => {
+            &BCVal::Int(i) => write!(f, "{}", i),
+            &BCVal::Ident(ref s) => write!(f, "{}", s),
+            &BCVal::Char(c) => write!(f, "{}", c),
+            &BCVal::String(ref s) => write!(f, "{}", s),
+            &BCVal::Bool(b) => write!(f, "{}", b),
+            &BCVal::Stack(ref v) => {
                 write!(
                     f,
                     "[{}]",
-                    v.iter().map(Val::to_string).collect::<Vec<_>>().join(",")
+                    v.iter().map(BCVal::to_string).collect::<Vec<_>>().join(",")
                 )
             }
-            &Val::Nil => write!(f, "nil"),
+            &BCVal::Nil => write!(f, "nil"),
         }
     }
 }
 
-impl From<IRVal> for Val {
+impl From<IRVal> for BCVal {
     fn from(other: IRVal) -> Self {
         match other {
-            IRVal::Int(i) => Val::Int(i),
-            IRVal::Ident(i) => Val::Ident(i),
-            IRVal::Char(c) => Val::Char(c),
-            IRVal::String(s) => Val::String(s),
-            IRVal::Bool(b) => Val::Bool(b),
-            IRVal::Stack(s) => Val::Stack(s.into_iter().map(IRVal::into).collect()),
-            IRVal::Nil => Val::Nil,
-            IRVal::BakeBlock(_) => panic!("IRVal::BakeBlock variants may not be converted to Vals"),
+            IRVal::Int(i) => BCVal::Int(i),
+            IRVal::Ident(i) => BCVal::Ident(i),
+            IRVal::Char(c) => BCVal::Char(c),
+            IRVal::String(s) => BCVal::String(s),
+            IRVal::Bool(b) => BCVal::Bool(b),
+            IRVal::Stack(s) => BCVal::Stack(s.into_iter().map(IRVal::into).collect()),
+            IRVal::Nil => BCVal::Nil,
+            IRVal::BakeBlock(_, _) => panic!("IRVal::BakeBlock variants may not be converted to BCVals"),
         }
     }
 }
