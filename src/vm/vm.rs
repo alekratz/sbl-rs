@@ -72,6 +72,12 @@ impl State {
         }
     }
 
+    pub fn push_all(&mut self, vals: &[BCVal]) {
+        for v in vals {
+            self.stack.push(v.clone());
+        }
+    }
+
     pub fn push(&mut self, val: BCVal) {
         self.stack.push(val)
     }
@@ -238,6 +244,11 @@ impl VM {
                     BCType::Push => {
                         let mut state = self.state.borrow_mut();
                         state.push(val.unwrap());
+                        state.increment_pc();
+                    }
+                    BCType::PushA => {
+                        let mut state = self.state.borrow_mut();
+                        state.push_all(val.unwrap().as_stack());
                         state.increment_pc();
                     }
                     BCType::PushL => {
