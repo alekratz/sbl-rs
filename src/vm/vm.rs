@@ -235,12 +235,12 @@ impl VM {
 
             {
                 match bc_type {
-                    BcType::Push => {
+                    BCType::Push => {
                         let mut state = self.state.borrow_mut();
                         state.push(val.unwrap());
                         state.increment_pc();
                     }
-                    BcType::PushL => {
+                    BCType::PushL => {
                         let mut state = self.state.borrow_mut();
                         let item = state.pop()?;
                         let mut stack = state.pop()?;
@@ -254,7 +254,7 @@ impl VM {
                         state.increment_pc();
                     }
                     // TODO : PushA
-                    BcType::Pop => {
+                    BCType::Pop => {
                         let mut state = self.state.borrow_mut();
                         let tos = state.pop()?;
                         let val = val.unwrap();
@@ -265,13 +265,13 @@ impl VM {
                         }
                         state.increment_pc();
                     }
-                    BcType::PopN => {
+                    BCType::PopN => {
                         let mut state = self.state.borrow_mut();
                         let i = *val.unwrap().as_int();
                         state.popn(i)?;
                         state.increment_pc();
                     }
-                    BcType::Load => {
+                    BCType::Load => {
                         let mut state = self.state.borrow_mut();
                         let val = val.unwrap();
                         let ident = val.as_ident();
@@ -279,7 +279,7 @@ impl VM {
                         state.push(val);
                         state.increment_pc();
                     }
-                    BcType::JmpZ => {
+                    BCType::JmpZ => {
                         let mut state = self.state.borrow_mut();
                         let jump_taken = {
                             let tos = state.peek()?;
@@ -296,19 +296,19 @@ impl VM {
                             state.increment_pc();
                         }
                     }
-                    BcType::Jmp => {
+                    BCType::Jmp => {
                         let mut state = self.state.borrow_mut();
                         let addr = *val.unwrap().as_int() as usize;
                         state.set_pc(addr);
                     }
-                    BcType::Call => {
+                    BCType::Call => {
                         let val = val.unwrap();
                         let fun_name = val.as_ident();
                         self.invoke(fun_name)?;
                         let mut state = self.state.borrow_mut();
                         state.increment_pc();
                     }
-                    BcType::Ret => break,
+                    BCType::Ret => break,
                 }
             }
         }

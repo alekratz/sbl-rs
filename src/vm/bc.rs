@@ -3,7 +3,7 @@ use vm::*;
 use syntax::*;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum BcType {
+pub enum BCType {
     Push,
     PushL,
     Pop,
@@ -15,129 +15,129 @@ pub enum BcType {
     Ret,
 }
 
-impl Display for BcType {
+impl Display for BCType {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                &BcType::Push => "PUSH",
-                &BcType::PushL => "PUSHL",
-                &BcType::Pop => "POP",
-                &BcType::PopN => "POPN",
-                &BcType::Load => "LOAD",
-                &BcType::JmpZ => "JMPZ",
-                &BcType::Jmp => "JMP",
-                &BcType::Call => "CALL",
-                &BcType::Ret => "RET",
+                &BCType::Push => "PUSH",
+                &BCType::PushL => "PUSHL",
+                &BCType::Pop => "POP",
+                &BCType::PopN => "POPN",
+                &BCType::Load => "LOAD",
+                &BCType::JmpZ => "JMPZ",
+                &BCType::Jmp => "JMP",
+                &BCType::Call => "CALL",
+                &BCType::Ret => "RET",
             }
         )
     }
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Bc {
-    pub bc_type: BcType,
+pub struct BC {
+    pub bc_type: BCType,
     pub tokens: Tokens,
     pub val: Option<Val>,
 }
 
-impl Bc {
-    pub fn push(tokens: Tokens, val: Val) -> Bc {
-        Bc {
-            bc_type: BcType::Push,
+impl BC {
+    pub fn push(tokens: Tokens, val: Val) -> BC {
+        BC {
+            bc_type: BCType::Push,
             tokens,
             val: Some(val),
         }
     }
 
-    pub fn pushl(tokens: Tokens) -> Bc {
-        Bc {
-            bc_type: BcType::PushL,
+    pub fn pushl(tokens: Tokens) -> BC {
+        BC {
+            bc_type: BCType::PushL,
             tokens,
             val: None,
         }
     }
 
-    pub fn pop(tokens: Tokens, val: Val) -> Bc {
-        Bc {
-            bc_type: BcType::Pop,
+    pub fn pop(tokens: Tokens, val: Val) -> BC {
+        BC {
+            bc_type: BCType::Pop,
             tokens,
             val: Some(val),
         }
     }
 
-    pub fn popn(tokens: Tokens, val: Val) -> Bc {
+    pub fn popn(tokens: Tokens, val: Val) -> BC {
         assert_matches!(val, Val::Int(_));
-        Bc {
-            bc_type: BcType::PopN,
+        BC {
+            bc_type: BCType::PopN,
             tokens,
             val: Some(val),
         }
     }
 
-    pub fn load(tokens: Tokens, val: Val) -> Bc {
+    pub fn load(tokens: Tokens, val: Val) -> BC {
         assert_matches!(val, Val::Ident(_));
-        Bc {
-            bc_type: BcType::Load,
+        BC {
+            bc_type: BCType::Load,
             tokens,
             val: Some(val),
         }
     }
 
-    pub fn jmpz(tokens: Tokens, val: Val) -> Bc {
+    pub fn jmpz(tokens: Tokens, val: Val) -> BC {
         assert_matches!(val, Val::Int(_));
-        Bc {
-            bc_type: BcType::JmpZ,
+        BC {
+            bc_type: BCType::JmpZ,
             tokens,
             val: Some(val),
         }
     }
 
-    pub fn jmp(tokens: Tokens, val: Val) -> Bc {
+    pub fn jmp(tokens: Tokens, val: Val) -> BC {
         assert_matches!(val, Val::Int(_));
-        Bc {
-            bc_type: BcType::Jmp,
+        BC {
+            bc_type: BCType::Jmp,
             tokens,
             val: Some(val),
         }
     }
 
-    pub fn call(tokens: Tokens, val: Val) -> Bc {
+    pub fn call(tokens: Tokens, val: Val) -> BC {
         assert_matches!(val, Val::Ident(_));
-        Bc {
-            bc_type: BcType::Call,
+        BC {
+            bc_type: BCType::Call,
             tokens,
             val: Some(val),
         }
     }
 
-    pub fn ret(tokens: Tokens) -> Bc {
-        Bc {
-            bc_type: BcType::Ret,
+    pub fn ret(tokens: Tokens) -> BC {
+        BC {
+            bc_type: BCType::Ret,
             tokens,
             val: None,
         }
     }
 }
 
-pub type BcBody = Vec<Bc>;
+pub type BCBody = Vec<BC>;
 
-impl From<IR> for Bc {
+impl From<IR> for BC {
     fn from(other: IR) -> Self {
         let new_type = match other.ir_type {
-            IRType::Push => BcType::Push,
-            IRType::PushL => BcType::PushL ,
-            IRType::Pop => BcType::Pop ,
-            IRType::PopN => BcType::PopN ,
-            IRType::Load => BcType::Load ,
-            IRType::JmpZ => BcType::JmpZ ,
-            IRType::Jmp => BcType::Jmp ,
-            IRType::Call => BcType::Call ,
-            IRType::Ret => BcType::Ret ,
-            IRType::Bake => panic!("IRType::Bake instructions cannot be converted to any BcType instruction"),
+            IRType::Push => BCType::Push,
+            IRType::PushL => BCType::PushL ,
+            IRType::Pop => BCType::Pop ,
+            IRType::PopN => BCType::PopN ,
+            IRType::Load => BCType::Load ,
+            IRType::JmpZ => BCType::JmpZ ,
+            IRType::Jmp => BCType::Jmp ,
+            IRType::Call => BCType::Call ,
+            IRType::Ret => BCType::Ret ,
+            IRType::Bake => panic!("IRType::Bake instructions cannot be converted to any BCType instruction"),
         };
-        Bc {
+        BC {
             bc_type: new_type,
             val: other.val.map(Val::from),
             tokens: other.tokens,

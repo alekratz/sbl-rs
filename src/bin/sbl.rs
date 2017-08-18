@@ -26,7 +26,7 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
         let fun_table = compiler.compile().chain_err(|| "Compile error")?;
         // run optimizations
         if optimize {
-            OptimizeBcInline::new(fun_table).optimize()
+            OptimizeBCInline::new(fun_table).optimize()
         } else {
             fun_table
         }

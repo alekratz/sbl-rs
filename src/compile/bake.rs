@@ -32,7 +32,7 @@ impl Compile for BakeBytes {
             // gets a list of all the bake blocks for this function
             let bake_blocks = fun.body
                 .iter()
-                .filter_map(|b| if b.bc_type == BcType::Bake { b.val.clone() } else { None })
+                .filter_map(|b| if b.bc_type == BCType::Bake { b.val.clone() } else { None })
                 .filter_map(|v| if let Val::BakeBlock(b) = v { Some(b) } else { None })
                 .collect::<Vec<_>>();
 
@@ -61,7 +61,7 @@ impl Compile for BakeBytes {
                     let compiled = {
                         let compile_block = CompileBlock::new(&boring_table, &block, 0);
                         compile_block.compile().map(|mut b| {
-                            b.push(Bc::ret(block.tokens().into()));
+                            b.push(BC::ret(block.tokens().into()));
                             b
                         })
                     };
@@ -97,7 +97,7 @@ impl Compile for BakeBytes {
                             let vm_state: State = vm.into();
                             Ok(vm_state.stack
                                     .into_iter()
-                                    .map(|val| Bc::push(block_tokens.clone(), val))
+                                    .map(|val| BC::push(block_tokens.clone(), val))
                                     .collect::<Vec<_>>())
                         }
                         Err(e) => Err(e),
@@ -116,7 +116,7 @@ impl Compile for BakeBytes {
                 .map(Result::unwrap)
                 .collect::<Vec<_>>();
             let body = fun.body
-                .split(|b| b.bc_type == BcType::Bake)
+                .split(|b| b.bc_type == BCType::Bake)
                 .map(|b| b.to_vec())
                 .collect::<Vec<_>>();
             assert_eq!(body.len() - 1, baked_compiled.len());

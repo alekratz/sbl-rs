@@ -18,12 +18,12 @@ use std::fmt::{self, Formatter, Display};
 #[derive(Clone, Debug)]
 pub struct UserFun {
     pub name: String,
-    pub body: BcBody,
+    pub body: BCBody,
     pub tokens: Tokens,
 }
 
 impl UserFun {
-    pub fn new(name: String, body: BcBody, tokens: Tokens) -> Self {
+    pub fn new(name: String, body: BCBody, tokens: Tokens) -> Self {
         UserFun {
             name,
             body,

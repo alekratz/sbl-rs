@@ -25,12 +25,12 @@ impl Compile for CompileBytes {
 }
 
 /// An optimizer that inlines functions.
-pub struct OptimizeBcInline {
+pub struct OptimizeBCInline {
     fun_table: FunTable,
-    to_inline: HashMap<String, BcBody>,
+    to_inline: HashMap<String, BCBody>,
 }
 
-impl Optimize for OptimizeBcInline {
+impl Optimize for OptimizeBCInline {
     type Out = FunTable;
 
     fn optimize(mut self) -> Self::Out {
@@ -41,9 +41,9 @@ impl Optimize for OptimizeBcInline {
     }
 }
 
-impl OptimizeBcInline {
+impl OptimizeBCInline {
     pub fn new(fun_table: FunTable) -> Self {
-        OptimizeBcInline {
+        OptimizeBCInline {
             fun_table,
             to_inline: HashMap::new(),
         }
@@ -53,15 +53,15 @@ impl OptimizeBcInline {
         const SKIP: &[&'static str] = &["main"]; // function names to skip and not inline
         if let &Fun::UserFun(ref fun) = fun as &Fun {
             !SKIP.contains(&fun.name.as_str()) &&
-                !fun.body.iter().any(|bc| bc.bc_type == BcType::Call)
+                !fun.body.iter().any(|bc| bc.bc_type == BCType::Call)
         } else {
             false
         }
     }
 
-    fn is_inline_call(&self, bc: &Bc) -> bool {
+    fn is_inline_call(&self, bc: &BC) -> bool {
         if let &Some(Val::Ident(ref fname)) = &bc.val {
-            bc.bc_type == BcType::Call && self.to_inline.contains_key(fname)
+            bc.bc_type == BCType::Call && self.to_inline.contains_key(fname)
         } else {
             false
         }
