@@ -1,6 +1,6 @@
 use errors::*;
 
-use syntax::*;
+use ir::*;
 use std::cmp::Ordering;
 use std::fmt::{self, Formatter, Display};
 
@@ -12,7 +12,6 @@ pub enum Val {
     String(String),
     Bool(bool),
     Stack(Vec<Val>),
-    BakeBlock(Block),
     Nil,
 }
 
@@ -26,7 +25,6 @@ impl Val {
             &Val::Bool(_) => other.is_bool(),
             &Val::Stack(_) => other.is_stack(),
             &Val::Nil => other.is_nil(),
-            &Val::BakeBlock(_) => other.is_bake_block(),
         }
     }
 
@@ -39,7 +37,6 @@ impl Val {
             &Val::Bool(_) => "bool",
             &Val::Stack(_) => "local stack",
             &Val::Nil => "nil",
-            &Val::BakeBlock(_) => "compile-time bake block",
         }
     }
 
@@ -55,7 +52,6 @@ impl Val {
         }
 
         match self {
-            &Val::BakeBlock(_) => panic!("bake blocks should not be available for comparison"),
             &Val::Int(i) => Ok(other.as_int().cmp(&i)),
             &Val::Ident(_) | &Val::String(_) | &Val::Bool(_) | &Val::Stack(_) | &Val::Nil => Err(
                 format!(
@@ -83,28 +79,22 @@ impl Display for Val {
                     v.iter().map(Val::to_string).collect::<Vec<_>>().join(",")
                 )
             }
-            &Val::BakeBlock(ref block) => write!(f, "bake {{ {:#?} }}", block),
             &Val::Nil => write!(f, "nil"),
         }
     }
 }
 
-impl From<Item> for Val {
-    fn from(other: Item) -> Self {
-        match other.into() {
-            ItemType::Int(i) => Val::Int(i),
-            ItemType::Ident(i) => Val::Ident(i),
-            ItemType::Char(c) => Val::Char(c),
-            ItemType::String(s) => Val::String(s),
-            ItemType::Bool(b) => Val::Bool(b),
-            ItemType::Stack(s) => Val::Stack(s.into_iter().map(Item::into).collect()),
-            ItemType::Nil => Val::Nil,
+impl From<IRVal> for Val {
+    fn from(other: IRVal) -> Self {
+        match other {
+            IRVal::Int(i) => Val::Int(i),
+            IRVal::Ident(i) => Val::Ident(i),
+            IRVal::Char(c) => Val::Char(c),
+            IRVal::String(s) => Val::String(s),
+            IRVal::Bool(b) => Val::Bool(b),
+            IRVal::Stack(s) => Val::Stack(s.into_iter().map(IRVal::into).collect()),
+            IRVal::Nil => Val::Nil,
+            IRVal::BakeBlock(_) => panic!("IRVal::BakeBlock variants may not be converted to Vals"),
         }
-    }
-}
-
-impl<'a> From<&'a Item> for Val {
-    fn from(other: &'a Item) -> Self {
-        other.clone().into()
     }
 }

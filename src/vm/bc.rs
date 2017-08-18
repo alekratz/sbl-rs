@@ -1,3 +1,4 @@
+use ir::*;
 use vm::*;
 use syntax::*;
 
@@ -12,7 +13,6 @@ pub enum BcType {
     Jmp,
     Call,
     Ret,
-    Bake,
 }
 
 impl Display for BcType {
@@ -30,7 +30,6 @@ impl Display for BcType {
                 &BcType::Jmp => "JMP",
                 &BcType::Call => "CALL",
                 &BcType::Ret => "RET",
-                &BcType::Bake => "BAKE",
             }
         )
     }
@@ -120,15 +119,29 @@ impl Bc {
             val: None,
         }
     }
+}
 
-    pub fn bake(tokens: Tokens, val: Val) -> Bc {
-        assert_matches!(val, Val::BakeBlock(_));
+pub type BcBody = Vec<Bc>;
+
+impl From<IR> for Bc {
+    fn from(other: IR) -> Self {
+        let new_type = match other.ir_type {
+            IRType::Push => BcType::Push,
+            IRType::PushL => BcType::PushL ,
+            IRType::Pop => BcType::Pop ,
+            IRType::PopN => BcType::PopN ,
+            IRType::Load => BcType::Load ,
+            IRType::JmpZ => BcType::JmpZ ,
+            IRType::Jmp => BcType::Jmp ,
+            IRType::Call => BcType::Call ,
+            IRType::Ret => BcType::Ret ,
+            IRType::Bake => panic!("IRType::Bake instructions cannot be converted to any BcType instruction"),
+        };
         Bc {
-            bc_type: BcType::Bake,
-            tokens,
-            val: Some(val),
+            bc_type: new_type,
+            val: other.val.map(Val::from),
+            tokens: other.tokens,
         }
     }
 }
 
-pub type BcBody = Vec<Bc>;

@@ -16,6 +16,7 @@ pub mod syntax;
 pub mod compile;
 pub mod vm;
 pub mod common;
+pub mod ir;
 
 pub mod errors {
     use common::*;

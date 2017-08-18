@@ -17,15 +17,16 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
     compile_only: bool,
     search_dirs: &[Q],
 ) -> Result<()> {
-    let mut filled_ast = process_source_path(path, search_dirs).chain_err(
+    let filled_ast = process_source_path(path, search_dirs).chain_err(
         || "Parse error",
     )?;
-    let compiler = CompileBytes::new(&mut filled_ast).builtins(&*BUILTINS);
+    let ir_compiler = CompileIR::new(&filled_ast).builtins(&*BUILTINS);
+    let compiler = CompileBytes::new(ir_compiler.compile()?);
     let fun_table = {
         let fun_table = compiler.compile().chain_err(|| "Compile error")?;
         // run optimizations
         if optimize {
-            OptimizeInline::new(fun_table).optimize()
+            OptimizeBcInline::new(fun_table).optimize()
         } else {
             fun_table
         }

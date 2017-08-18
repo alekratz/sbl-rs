@@ -10,6 +10,7 @@ pub use self::val::*;
 pub use self::bc::*;
 
 use syntax::*;
+use ir::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::fmt::{self, Formatter, Display};
@@ -19,17 +20,14 @@ pub struct UserFun {
     pub name: String,
     pub body: BcBody,
     pub tokens: Tokens,
-    pub contains_bake: bool,
 }
 
 impl UserFun {
     pub fn new(name: String, body: BcBody, tokens: Tokens) -> Self {
-        let contains_bake = tokens.contains_bake_token();
         UserFun {
             name,
             body,
             tokens,
-            contains_bake,
         }
     }
 
@@ -51,9 +49,22 @@ impl UserFun {
     }
 }
 
+impl From<IRUserFun> for UserFun {
+    fn from(other: IRUserFun) -> Self {
+        UserFun {
+            name: other.name,
+            body: other.body
+                .into_iter()
+                .map(IR::into)
+                .collect(),
+            tokens: other.tokens,
+        }
+    }
+}
+
 #[derive(EnumIsA)]
 pub enum Fun {
-    UserFun(Rc<UserFun>),
+    UserFun(UserFun),
     ForeignFun(ForeignFn),
     BuiltinFun(&'static BuiltinFun),
 }
@@ -74,6 +85,16 @@ impl Clone for Fun {
             &Fun::UserFun(ref fun) => Fun::UserFun(fun.clone()),
             &Fun::ForeignFun(ref fun) => Fun::ForeignFun(fun.clone()),
             &Fun::BuiltinFun(fun) => Fun::BuiltinFun(fun),
+        }
+    }
+}
+
+impl From<IRFun> for Fun {
+    fn from(other: IRFun) -> Self {
+        match other {
+            IRFun::UserFun(u) => Fun::UserFun(u.into()),
+            IRFun::ForeignFun(f) => Fun::ForeignFun(f),
+            IRFun::BuiltinFun(b) => Fun::BuiltinFun(b),
         }
     }
 }

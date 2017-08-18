@@ -408,8 +408,7 @@ impl<'c> Tokenizer<'c> {
                     self.next_char();
                     (OCT_DIGITS, 8)
                 }
-                Some(_) => unreachable!(),
-                None => unreachable!(),
+                _ => unreachable!(),
             };
             self.match_any_char(digits)?;
             while let Some(_) = self.try_match_any(digits) {}

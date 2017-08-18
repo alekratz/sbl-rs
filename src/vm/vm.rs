@@ -150,6 +150,7 @@ impl From<VM> for State {
 pub struct VM {
     fun_table: FunRcTable,
     state: RefCell<State>,
+    user_fun_cache: HashMap<String, Rc<UserFun>>,
 }
 
 impl VM {
@@ -161,6 +162,7 @@ impl VM {
         VM {
             fun_table: rc_table,
             state: RefCell::new(State::new()),
+            user_fun_cache: HashMap::new(),
         }
     }
 
@@ -180,28 +182,45 @@ impl VM {
     }
 
     pub fn invoke(&mut self, fun_name: &str) -> Result<()> {
-        let fun = self.fun_table
-            .get(fun_name)
-            .expect(&format!(
-                "expected function `{}` but none was found; compiler should have caught this",
-                fun_name
-            ))
-            .clone();
-        match &fun as &Fun {
-            &Fun::UserFun(ref fun) => {
-                {
-                    let mut state = self.state.borrow_mut();
-                    state.push_fun(fun.clone().into());
-                }
-                self.invoke_user_fun()?;
-                {
-                    let mut state = self.state.borrow_mut();
-                    state.pop_fun();
-                }
-                Ok(())
+        if let Some(fun) = self.user_fun_cache.get(fun_name).map(Rc::clone) {
+            {
+                let mut state = self.state.borrow_mut();
+                state.push_fun(fun.into());
             }
-            &Fun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
-            &Fun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
+            self.invoke_user_fun()?;
+            {
+                let mut state = self.state.borrow_mut();
+                state.pop_fun();
+            }
+            Ok(())
+        }
+        else {
+            let fun = self.fun_table
+                .get(fun_name)
+                .expect(&format!(
+                    "expected function `{}` but none was found; compiler should have caught this",
+                    fun_name
+                ))
+                .clone();
+            match &fun as &Fun {
+                &Fun::UserFun(ref fun) => {
+                    // new user fun cache entry
+                    let ptr = Rc::new(fun.clone());
+                    self.user_fun_cache.insert(fun_name.to_string(), ptr.clone());
+                    {
+                        let mut state = self.state.borrow_mut();
+                        state.push_fun(ptr.clone().into());
+                    }
+                    self.invoke_user_fun()?;
+                    {
+                        let mut state = self.state.borrow_mut();
+                        state.pop_fun();
+                    }
+                    Ok(())
+                }
+                &Fun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
+                &Fun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
+            }
         }
     }
 
@@ -290,11 +309,6 @@ impl VM {
                         state.increment_pc();
                     }
                     BcType::Ret => break,
-                    BcType::Bake => {
-                        panic!(
-                            "bake instructions should be filtered out by the compiler before reaching the VM"
-                        )
-                    }
                 }
             }
         }

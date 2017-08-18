@@ -318,6 +318,13 @@ impl PartialEq for Stmt {
                     false
                 }
             }
+            &Bake(ref b) => {
+                if let &Bake(ref o) = other {
+                    b == o
+                } else {
+                    false
+                }
+            }
         }
     }
 }
