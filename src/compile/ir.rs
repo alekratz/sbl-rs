@@ -2,7 +2,7 @@ use ir::*;
 use vm::*;
 use syntax::*;
 use errors::*;
-use compile::Compile;
+use compile::{Compile, BakeIR};
 use std::collections::HashMap;
 
 /*
@@ -60,9 +60,8 @@ impl<'ast> Compile for CompileIR<'ast> {
             .map(|(k, v)| (k, v.unwrap()))
             .collect();
 
-        //let bake = BakeBytes::new(fun_table);
-        //bake.compile()
-        Ok(fun_table)
+        let bake = BakeIR::new(fun_table);
+        bake.compile()
     }
 }
 

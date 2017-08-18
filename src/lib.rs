@@ -11,6 +11,7 @@ extern crate enum_methods;
 extern crate libc;
 extern crate libffi;
 extern crate itertools;
+extern crate petgraph;
 
 pub mod syntax;
 pub mod compile;

@@ -1,7 +1,7 @@
 pub mod bytes;
-// TODO(IR)
-//pub mod bake;
+pub mod bake;
 pub mod ir;
+pub mod graph;
 
 use errors::*;
 
@@ -19,6 +19,6 @@ pub trait Optimize {
 }
 
 pub use self::bytes::*;
-// TODO(IR)
-//pub use self::bake::*;
+pub use self::bake::*;
 pub use self::ir::*;
+pub use self::graph::*;

@@ -1,62 +1,67 @@
-use compile::{Compile, CompileIRBlock};
+use compile::*;
 use common::*;
 use errors::*;
 use syntax::*;
 use vm::*;
+use ir::*;
 
 use itertools::interleave;
+use petgraph::Direction;
+use petgraph::algo::is_cyclic_directed;
+use petgraph::visit::Dfs;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub struct BakeBytes {
-    fun_table: FunTable,
+pub struct BakeIR {
+    fun_table: IRFunTable,
 }
 
-impl BakeBytes {
-    pub fn new(fun_table: FunTable) -> Self {
-        BakeBytes { fun_table }
+impl BakeIR {
+    pub fn new(fun_table: IRFunTable) -> Self {
+        BakeIR { fun_table }
     }
 }
 
-impl Compile for BakeBytes {
-    type Out = FunTable;
+impl Compile for BakeIR {
+    type Out = IRFunTable;
     fn compile(self) -> Result<Self::Out> {
+        let bake_graph = build_bake_call_graph(&self.fun_table);
+        if is_cyclic_directed(&bake_graph) {
+            return Err("there were one or more cycles detected in bake blocks".into());
+        }
+
+        // find all leaves and compile them first
+        let leaves = bake_graph.node_indices()
+            .filter(|node| bake_graph.neighbors_directed(*node, Direction::Incoming).count() == 0)
+            .collect::<Vec<_>>();
+        
+        println!("found the following leaves in the bake statement graph:");
+        for l in leaves {
+            println!("    {}", &bake_graph[l]);
+        }
+
+        let boring_table = self.fun_table
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (k, Some(v)))
+            .collect::<HashMap<_, _>>();
         // make sure that no functions being called contain bakes themselves
         for fun in self.fun_table.values().filter(|f| f.is_user_fun()) {
             let mut fun = fun.as_user_fun().clone();
             // gets a list of all the bake blocks for this function
             let bake_blocks = fun.body
                 .iter()
-                .filter_map(|b| if b.bc_type == BCType::Bake { b.val.clone() } else { None })
-                .filter_map(|v| if let Val::BakeBlock(b) = v { Some(b) } else { None })
+                .filter_map(|b| if b.ir_type == IRType::Bake { b.val.clone() } else { None })
+                .filter_map(|v| if let IRVal::BakeBlock(b) = v { Some(b) } else { None })
                 .collect::<Vec<_>>();
-
-            // what the below does is gets the list of function calls in all bake statements that
-            // contain function calls to other bake statements
-            let illegal_calls = bake_blocks
-                .iter()
-                .flat_map(|b| &b.block)
-                .filter_map(|stmt| if let &Stmt::Stack(ref stmt) = stmt { Some(&stmt.stack_actions) } else { None })
-                .flat_map(|actions| actions)
-                .filter_map(|a| if let &StackAction::Push(ref i) = a { Some(i) } else { None })
-                .filter_map(|i| if let ItemType::Ident(ref fname) = i.item_type { self.fun_table.get(fname) } else { None })
-                .filter_map(|fun| if let &Fun::UserFun(ref fun) = fun { if fun.contains_bake { Some(&fun.name) } else { None } } else { None })
-                .collect::<Vec<_>>();
-
-            // Check if there's any recursive bake blocks
-            if !illegal_calls.is_empty() {
-                return (Err(format!("attempted to call `{}`, which contains a `bake` statement itself", illegal_calls[0]).into()) as Result<_>)
-                    .chain_err(|| format!("in `bake` statement in function `{}`", fun.name))
-                    .chain_err(|| "recursive `bake` statements are not allowed");
-            }
 
             let baked = bake_blocks
                 .into_iter()
                 .map(|block| {
                     let compiled = {
-                        let compile_block = CompileIRBlock::new(&self.fun_table, &block, 0);
+                        let compile_block = CompileIRBlock::new(&boring_table, &block, 0);
                         compile_block.compile().map(|mut b| {
-                            b.push(BC::ret(block.tokens().into()));
+                            b.push(IR::ret(block.tokens().into()));
                             b
                         })
                     };
@@ -64,6 +69,7 @@ impl Compile for BakeBytes {
                 })
                 .collect::<Vec<_>>();
 
+            /*
             // Catch any compile errors in the bake blocks
             if baked.iter().any(|&(ref r, _)| r.is_err()) {
                 // NOTE: do not try to refactor this.
@@ -83,16 +89,16 @@ impl Compile for BakeBytes {
                     let baked_name = format!("< baked block defined in {} >", block.range());
                     let block_tokens: Tokens = block.tokens().into();
                     let baked_fun =
-                        UserFun::new(baked_name.clone(), compiled, block_tokens.clone());
+                        IRUserFun::new(baked_name.clone(), compiled, block_tokens.clone());
                     let mut baked_table = self.fun_table.clone();
-                    baked_table.insert(baked_name.clone(), Fun::UserFun(Rc::new(baked_fun)));
+                    baked_table.insert(baked_name.clone(), IRFun::UserFun(baked_fun));
                     let mut vm = VM::new(baked_table);
                     match vm.invoke(&baked_name) {
                         Ok(_) => {
                             let vm_state: State = vm.into();
                             Ok(vm_state.stack
                                     .into_iter()
-                                    .map(|val| BC::push(block_tokens.clone(), val))
+                                    .map(|val| IR::push(block_tokens.clone(), val.into()))
                                     .collect::<Vec<_>>())
                         }
                         Err(e) => Err(e),
@@ -111,7 +117,7 @@ impl Compile for BakeBytes {
                 .map(Result::unwrap)
                 .collect::<Vec<_>>();
             let body = fun.body
-                .split(|b| b.bc_type == BCType::Bake)
+                .split(|b| b.ir_type == IRType::Bake)
                 .map(|b| b.to_vec())
                 .collect::<Vec<_>>();
             assert_eq!(body.len() - 1, baked_compiled.len());
@@ -120,7 +126,8 @@ impl Compile for BakeBytes {
                 .into_iter()
                 .flat_map(id)
                 .collect::<Vec<_>>();
-            boring_table.insert(fun.name.clone(), Some(Fun::UserFun(Rc::new(fun))));
+            boring_table.insert(fun.name.clone(), Some(IRFun::UserFun(fun)));
+            */
         }
         Ok(
             boring_table

@@ -92,6 +92,20 @@ impl Display for IRVal {
     }
 }
 
+impl From<Val> for IRVal {
+    fn from(other: Val) -> Self {
+        match other {
+            Val::Int(i) => IRVal::Int(i),
+            Val::Ident(i) => IRVal::Ident(i),
+            Val::Char(c) => IRVal::Char(c),
+            Val::String(s) => IRVal::String(s),
+            Val::Bool(b) => IRVal::Bool(b),
+            Val::Stack(s) => IRVal::Stack(s.into_iter().map(Val::into).collect()),
+            Val::Nil => IRVal::Nil,
+        }
+    }
+}
+
 impl From<Item> for IRVal {
     fn from(other: Item) -> Self {
         match other.into() {
