@@ -1,4 +1,4 @@
-use compile::{Compile, CompileBlock};
+use compile::{Compile, CompileIRBlock};
 use common::*;
 use errors::*;
 use syntax::*;
@@ -21,11 +21,6 @@ impl BakeBytes {
 impl Compile for BakeBytes {
     type Out = FunTable;
     fn compile(self) -> Result<Self::Out> {
-        let mut boring_table = self.fun_table
-            .clone()
-            .into_iter()
-            .map(|(k, v)| (k, Some(v)))
-            .collect::<HashMap<_, _>>();
         // make sure that no functions being called contain bakes themselves
         for fun in self.fun_table.values().filter(|f| f.is_user_fun()) {
             let mut fun = fun.as_user_fun().clone();
@@ -59,7 +54,7 @@ impl Compile for BakeBytes {
                 .into_iter()
                 .map(|block| {
                     let compiled = {
-                        let compile_block = CompileBlock::new(&boring_table, &block, 0);
+                        let compile_block = CompileIRBlock::new(&self.fun_table, &block, 0);
                         compile_block.compile().map(|mut b| {
                             b.push(BC::ret(block.tokens().into()));
                             b

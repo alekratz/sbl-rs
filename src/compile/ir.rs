@@ -41,7 +41,7 @@ impl<'ast> Compile for CompileIR<'ast> {
                     );
                 }
                 let mut block = {
-                    let block_compiler = CompileBlock::new(&self.fun_table, &fun.block, 0);
+                    let block_compiler = CompileIRBlock::new(&self.fun_table, &fun.block, 0);
                     block_compiler.compile()?
                 };
                 block.push(IR::ret(fun.tokens().into()));
@@ -135,15 +135,15 @@ impl<'ast> CompileIR<'ast> {
     }
 }
 
-pub struct CompileBlock<'ft, 'b> {
+pub struct CompileIRBlock<'ft, 'b> {
     pub fun_table: &'ft BoringTable,
     pub block: &'b Block,
     pub jmp_offset: usize,
 }
 
-impl<'ft, 'b> CompileBlock<'ft, 'b> {
+impl<'ft, 'b> CompileIRBlock<'ft, 'b> {
     pub fn new(fun_table: &'ft BoringTable, block: &'b Block, jmp_offset: usize) -> Self {
-        CompileBlock {
+        CompileIRBlock {
             fun_table,
             block,
             jmp_offset,
@@ -202,7 +202,7 @@ impl<'ft, 'b> CompileBlock<'ft, 'b> {
     }
 }
 
-impl<'ft, 'b> Compile for CompileBlock<'ft, 'b> {
+impl<'ft, 'b> Compile for CompileIRBlock<'ft, 'b> {
     type Out = IRBody;
     fn compile(self) -> Result<Self::Out> {
         let mut body = vec![];
@@ -219,7 +219,7 @@ impl<'ft, 'b> Compile for CompileBlock<'ft, 'b> {
                     let start_addr = body.len();
                     body.push(None); // placeholder for later
                     let block_compiler =
-                        CompileBlock::new(self.fun_table, &br.block, jmp_offset + start_addr + 1);
+                        CompileIRBlock::new(self.fun_table, &br.block, jmp_offset + start_addr + 1);
                     body.append(&mut block_compiler
                         .compile()?
                         .into_iter()
@@ -228,7 +228,7 @@ impl<'ft, 'b> Compile for CompileBlock<'ft, 'b> {
                     let end_addr = if let &Some(ref el) = &br.el_stmt {
                         let end_addr = body.len();
                         body.push(None);
-                        let block_compiler = CompileBlock::new(
+                        let block_compiler = CompileIRBlock::new(
                             self.fun_table,
                             &el.block,
                             jmp_offset + start_addr + 1,
@@ -253,7 +253,7 @@ impl<'ft, 'b> Compile for CompileBlock<'ft, 'b> {
                     let start_addr = body.len();
                     body.push(None);
                     let block_compiler =
-                        CompileBlock::new(self.fun_table, &lp.block, jmp_offset + start_addr + 1);
+                        CompileIRBlock::new(self.fun_table, &lp.block, jmp_offset + start_addr + 1);
                     body.append(&mut block_compiler
                         .compile()?
                         .into_iter()
