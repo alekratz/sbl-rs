@@ -13,15 +13,17 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-pub struct BakeIRFun {
+pub struct BakeIRFunTable {
+    bake_graph: CallGraph,
     ir_fun_table: IRFunTable,
     bc_fun_table: BCFunTable,
     vm: RefCell<VM>,
 }
 
-impl BakeIRFun {
-    pub fn new(ir_fun_table: IRFunTable, bc_fun_table: BCFunTable) -> Self {
-        BakeIRFun {
+impl BakeIRFunTable {
+    pub fn new(bake_graph: CallGraph, ir_fun_table: IRFunTable, bc_fun_table: BCFunTable) -> Self {
+        BakeIRFunTable {
+            bake_graph,
             ir_fun_table,
             bc_fun_table: bc_fun_table.clone(),
             vm: RefCell::new(VM::new(bc_fun_table)),
@@ -57,7 +59,7 @@ impl BakeIRFun {
     }
 }
 
-impl Compile for BakeIRFun {
+impl Compile for BakeIRFunTable {
     type Out = BCFunTable;
     fn compile(self) -> Result<Self::Out> {
         // Build the boring table
@@ -70,10 +72,9 @@ impl Compile for BakeIRFun {
             */
 
 
-        let bake_graph = build_bake_call_graph(&self.ir_fun_table);
-        let mut dep_order = match toposort(&bake_graph, None) {
+        let mut dep_order = match toposort(&self.bake_graph, None) {
             Err(cycle) => {
-                return Err(format!("bake call cycle detected in function `{}`", &bake_graph[cycle.node_id()]).into());
+                return Err(format!("bake call cycle detected in function `{}`", &self.bake_graph[cycle.node_id()]).into());
             }
             Ok(v) => v,
         };
@@ -81,7 +82,7 @@ impl Compile for BakeIRFun {
         dep_order.reverse();
         let baked_funs = dep_order.into_iter()
             .map(|fun_index| {
-                let fname = &bake_graph[fun_index];
+                let fname = &self.bake_graph[fun_index];
                 let fun = self.ir_fun_table[fname].as_user_fun();
                 let body = match self.compile_ir_body(fun.body.clone()) {
                     Ok(f) => f,
@@ -98,7 +99,6 @@ impl Compile for BakeIRFun {
                 .unwrap_err())
         }
         else {
-            
             let mut baked_funs = baked_funs.into_iter()
                 .map(Result::unwrap)
                 .map(|f| (f.as_user_fun().name.clone(), f))

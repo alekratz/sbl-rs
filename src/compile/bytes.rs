@@ -2,7 +2,7 @@ use ir::*;
 use vm::*;
 use errors::*;
 use internal::*;
-use compile::{Compile, Optimize, BakeIRFun};
+use compile::{Compile, Optimize, BakeIRFunTable, build_bake_call_graph};
 use std::collections::HashMap;
 
 pub struct CompileBytes {
@@ -18,6 +18,7 @@ impl CompileBytes {
 impl Compile for CompileBytes {
     type Out = BCFunTable;
     fn compile(self) -> Result<Self::Out> {
+        let bake_graph = build_bake_call_graph(&self.fun_table)?;
         let (bc_funs, bake_funs): (IRFunTable, IRFunTable) = self.fun_table
             .into_iter()
             .partition(|&(_, ref v)| if let &IRFun::UserFun(ref fun) = v {
@@ -29,7 +30,7 @@ impl Compile for CompileBytes {
         let bc_funs = bc_funs.into_iter()
             .map(|(k, v)| (k, v.into()))
             .collect::<BCFunTable>();
-        let bake_compile = BakeIRFun::new(bake_funs, bc_funs);
+        let bake_compile = BakeIRFunTable::new(bake_graph, bake_funs, bc_funs);
         bake_compile.compile()
     }
 }
