@@ -1,7 +1,8 @@
 use ir::*;
 use vm::*;
 use errors::*;
-use compile::{Compile, Optimize};
+use internal::*;
+use compile::{Compile, Optimize, BakeIRFun};
 use std::collections::HashMap;
 
 pub struct CompileBytes {
@@ -17,10 +18,19 @@ impl CompileBytes {
 impl Compile for CompileBytes {
     type Out = BCFunTable;
     fn compile(self) -> Result<Self::Out> {
-        Ok(self.fun_table
+        let (bc_funs, bake_funs): (IRFunTable, IRFunTable) = self.fun_table
             .into_iter()
+            .partition(|&(_, ref v)| if let &IRFun::UserFun(ref fun) = v {
+                !fun.contains_bake
+            } else {
+                true
+            });
+
+        let bc_funs = bc_funs.into_iter()
             .map(|(k, v)| (k, v.into()))
-            .collect::<BCFunTable>())
+            .collect::<BCFunTable>();
+        let bake_compile = BakeIRFun::new(bake_funs, bc_funs);
+        bake_compile.compile()
     }
 }
 
@@ -49,9 +59,9 @@ impl OptimizeBCInline {
         }
     }
     /// Determines whether a given function should be inlined.
-    fn should_inline(fun: &Fun) -> bool {
+    fn should_inline(fun: &BCFun) -> bool {
         const SKIP: &[&'static str] = &["main"]; // function names to skip and not inline
-        if let &Fun::UserFun(ref fun) = fun as &Fun {
+        if let &BCFun::UserFun(ref fun) = fun as &BCFun {
             !SKIP.contains(&fun.name.as_str()) &&
                 !fun.body.iter().any(|bc| bc.bc_type == BCType::Call)
         } else {
@@ -68,7 +78,7 @@ impl OptimizeBCInline {
     }
 
     /// Determines which functions to inline.
-    /// Functions are inlined if they don't call another function.
+    /// BCFunctions are inlined if they don't call another function.
     fn determine_inlines(&mut self) {
         for (ref fname, ref fun) in &self.fun_table {
             if Self::should_inline(fun) {
@@ -109,7 +119,7 @@ impl OptimizeBCInline {
             let mut new_body = vec![];
             {
                 let fun = self.fun_table.get(&fname).unwrap();
-                let ref body = (fun as &Fun).as_user_fun().body;
+                let ref body = (fun as &BCFun).as_user_fun().body;
                 for bc in body {
                     if self.is_inline_call(bc) {
                         let call_name = bc.clone().val.unwrap().as_ident().to_string();
@@ -130,7 +140,7 @@ impl OptimizeBCInline {
             // replace the function with the new body
             self.fun_table.insert(
                 fname.clone(),
-                Fun::UserFun(UserFun::new(fname, new_body, tokens)),
+                BCFun::UserFun(BCUserFun::new(fname, new_body, tokens)),
             );
         }
     }

@@ -18,6 +18,7 @@ pub mod compile;
 pub mod vm;
 pub mod common;
 pub mod ir;
+pub mod internal;
 
 pub mod errors {
     use common::*;

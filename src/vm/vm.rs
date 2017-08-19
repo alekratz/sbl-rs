@@ -1,17 +1,20 @@
 use errors::*;
 use vm::*;
+use internal::*;
 use libc::c_void;
 use std::collections::HashMap;
 use std::cell::RefCell;
+use std::rc::Rc;
 
-pub struct FunState {
-    pub fun: Rc<UserFun>,
+#[derive(Clone, Debug)]
+pub struct BCFunState {
+    pub fun: Rc<BCUserFun>,
     pub pc: usize,
     pub locals: HashMap<String, BCVal>,
     // TODO : callsite
 }
 
-impl FunState {
+impl BCFunState {
     pub fn load(&self, name: &str) -> Result<&BCVal> {
         if let Some(ref val) = self.locals.get(name) {
             Ok(val)
@@ -27,9 +30,9 @@ impl FunState {
     }
 }
 
-impl From<Rc<UserFun>> for FunState {
-    fn from(other: Rc<UserFun>) -> Self {
-        FunState {
+impl From<Rc<BCUserFun>> for BCFunState {
+    fn from(other: Rc<BCUserFun>) -> Self {
+        BCFunState {
             fun: other,
             pc: 0,
             locals: HashMap::new(),
@@ -37,9 +40,10 @@ impl From<Rc<UserFun>> for FunState {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct State {
     pub stack: Vec<BCVal>,
-    pub call_stack: Vec<FunState>,
+    pub call_stack: Vec<BCFunState>,
     pub dl_handles: HashMap<String, *mut c_void>,
     pub foreign_functions: HashMap<String, *mut c_void>,
 }
@@ -73,9 +77,7 @@ impl State {
     }
 
     pub fn push_all(&mut self, vals: &[BCVal]) {
-        for v in vals {
-            self.stack.push(v.clone());
-        }
+        self.stack.extend_from_slice(vals);
     }
 
     pub fn push(&mut self, val: BCVal) {
@@ -116,19 +118,19 @@ impl State {
         }
     }
 
-    pub fn current_fun(&self) -> &FunState {
+    pub fn current_fun(&self) -> &BCFunState {
         self.call_stack.last().unwrap()
     }
 
-    pub fn current_fun_mut(&mut self) -> &mut FunState {
+    pub fn current_fun_mut(&mut self) -> &mut BCFunState {
         self.call_stack.last_mut().unwrap()
     }
 
-    pub fn push_fun(&mut self, fun_state: FunState) {
+    pub fn push_fun(&mut self, fun_state: BCFunState) {
         self.call_stack.push(fun_state);
     }
 
-    pub fn pop_fun(&mut self) -> FunState {
+    pub fn pop_fun(&mut self) -> BCFunState {
         self.call_stack.pop().unwrap()
     }
 
@@ -153,15 +155,17 @@ impl From<VM> for State {
     }
 }
 
+#[derive(Clone)]
 pub struct VM {
-    fun_table: FunRcTable,
+    fun_table: BCFunRcTable,
     state: RefCell<State>,
-    user_fun_cache: HashMap<String, Rc<UserFun>>,
+    user_fun_cache: HashMap<String, Rc<BCUserFun>>,
 }
 
 impl VM {
     pub fn new(fun_table: BCFunTable) -> Self {
-        let mut rc_table = FunRcTable::new();
+        let mut rc_table = BCFunRcTable::new();
+        // TODO : itertools RC iterator
         for (k, v) in fun_table {
             rc_table.insert(k, Rc::new(v));
         }
@@ -172,10 +176,16 @@ impl VM {
         }
     }
 
+    pub fn add_fun(&mut self, name: String, fun: BCFun) {
+        // XXX - I don't like this function, is there a better way we can update a funtable owned
+        // by a VM? (probably not)
+        self.fun_table.insert(name, Rc::new(fun));
+    }
+
     pub fn run(&mut self) -> Result<()> {
         // Load all of the foreign functions
         for f in self.fun_table.iter().filter_map(|(_, f)| {
-            if let &Fun::ForeignFun(ref f) = f as &Fun {
+            if let &BCFun::ForeignFun(ref f) = f as &BCFun {
                 Some(f)
             } else {
                 None
@@ -208,8 +218,8 @@ impl VM {
                     fun_name
                 ))
                 .clone();
-            match &fun as &Fun {
-                &Fun::UserFun(ref fun) => {
+            match &fun as &BCFun {
+                &BCFun::UserFun(ref fun) => {
                     // new user fun cache entry
                     let ptr = Rc::new(fun.clone());
                     self.user_fun_cache.insert(fun_name.to_string(), ptr.clone());
@@ -224,10 +234,24 @@ impl VM {
                     }
                     Ok(())
                 }
-                &Fun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
-                &Fun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
+                &BCFun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
+                &BCFun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
             }
         }
+    }
+
+    pub fn inject_user_fun(&mut self, fun: BCUserFun) -> Result<()> {
+        let rc = Rc::new(fun);
+        {
+            let mut state = self.state.borrow_mut();
+            state.push_fun(rc.into());
+        }
+        self.invoke_user_fun()?;
+        {
+            let mut state = self.state.borrow_mut();
+            state.pop_fun();
+        }
+        Ok(())
     }
 
     fn invoke_user_fun(&mut self) -> Result<()> {

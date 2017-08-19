@@ -1,6 +1,7 @@
 use ir::*;
 use vm::*;
 use syntax::*;
+use std::fmt::{self, Formatter, Display};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum BCType {

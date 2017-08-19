@@ -1,6 +1,7 @@
 use ir::*;
 use vm::*;
 use syntax::*;
+use internal::*;
 use errors::*;
 use compile::Compile;
 use std::collections::HashMap;
@@ -28,7 +29,7 @@ impl<'ast> Compile for CompileIR<'ast> {
 
         // fill the entries for the function table
         for top in &self.ast.ast {
-            if let &TopLevel::FunDef(ref fun) = top {
+            if let &TopLevel::BCFunDef(ref fun) = top {
                 let fun_name = fun.name.clone();
                 {
                     let fun_entry = self.fun_table.get(&fun_name).expect(
@@ -103,7 +104,7 @@ impl<'ast> CompileIR<'ast> {
 
         for top in &self.ast.ast {
             match top {
-                &TopLevel::FunDef(ref fun) => {
+                &TopLevel::BCFunDef(ref fun) => {
                     check_defined(&fun.name, &self.fun_table).chain_err(
                         || fun.range(),
                     )?;
@@ -269,7 +270,7 @@ impl<'ft, 'b> Compile for CompileIRBlock<'ft, 'b> {
                         IRVal::BakeBlock({
                             let bake_compiler = CompileIRBlock::new(self.fun_table, &block.block, 0);
                             bake_compiler.compile()?
-                        }, (&block.block).clone()),
+                        }),
                     )))
                 }
 

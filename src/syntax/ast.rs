@@ -517,22 +517,22 @@ block_stmt!(BakeStmt
 
 #[derive(EnumAsGetters, Clone, PartialEq, Debug)]
 pub enum TopLevel {
-    FunDef(FunDef),
+    BCFunDef(BCFunDef),
     Import(Import),
     Foreign(Foreign),
 }
 
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
-pub struct FunDef {
+pub struct BCFunDef {
     pub tokens: Tokens,
     pub name: String,
     pub block: Block,
 }
 
-impl FunDef {
+impl BCFunDef {
     pub fn new(tokens: Tokens, name: String, block: Block) -> Self {
-        FunDef {
+        BCFunDef {
             tokens,
             name,
             block,
@@ -540,7 +540,7 @@ impl FunDef {
     }
 }
 
-impl ASTNode for FunDef {
+impl ASTNode for BCFunDef {
     fn tokens(&self) -> &[RcToken] {
         &self.tokens
     }
@@ -551,18 +551,18 @@ impl ASTNode for FunDef {
 }
 
 #[cfg(test)]
-impl PartialEq for FunDef {
+impl PartialEq for BCFunDef {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.block == other.block
     }
 }
 
 #[cfg(test)]
-impl Debug for FunDef {
+impl Debug for BCFunDef {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "FunDef {{ name: {:?} block: {:?} }}",
+            "BCFunDef {{ name: {:?} block: {:?} }}",
             self.name,
             self.block
         )
@@ -718,7 +718,7 @@ pub struct AST {
 /*
 /// A pre-processed AST, ready to be compiled.
 pub struct FilledAST {
-    pub ast: FunDefList,
+    pub ast: BCFunDefList,
     pub path: String,
 }
 */

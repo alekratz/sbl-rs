@@ -94,7 +94,7 @@ impl From<IRVal> for BCVal {
             IRVal::Bool(b) => BCVal::Bool(b),
             IRVal::Stack(s) => BCVal::Stack(s.into_iter().map(IRVal::into).collect()),
             IRVal::Nil => BCVal::Nil,
-            IRVal::BakeBlock(_, _) => panic!("IRVal::BakeBlock variants may not be converted to BCVals"),
+            IRVal::BakeBlock(_) => panic!("IRVal::BakeBlock variants may not be converted to BCVals"),
         }
     }
 }

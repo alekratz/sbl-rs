@@ -139,13 +139,13 @@ impl<'c> Parser<'c> {
             Ok(TopLevel::Import(self.expect_import().chain_err(
                 || "while parsing import statement",
             )?))
-        } else if self.can_match_any(FunDef::lookaheads()) {
-            Ok(TopLevel::FunDef(self.expect_fun()?))
+        } else if self.can_match_any(BCFunDef::lookaheads()) {
+            Ok(TopLevel::BCFunDef(self.expect_fun()?))
         } else if self.can_match_any(Foreign::lookaheads()) {
             Ok(TopLevel::Foreign(self.expect_foreign()?))
         } else {
             let mut all = vec![];
-            all.extend_from_slice(FunDef::lookaheads());
+            all.extend_from_slice(BCFunDef::lookaheads());
             all.extend_from_slice(Import::lookaheads());
             all.extend_from_slice(Foreign::lookaheads());
             self.match_any(all.as_slice())?;
@@ -219,14 +219,14 @@ impl<'c> Parser<'c> {
         ))
     }
 
-    fn expect_fun(&mut self) -> Result<FunDef> {
-        let mut tokens = vec![self.match_any(FunDef::lookaheads())?.into_rc()];
+    fn expect_fun(&mut self) -> Result<BCFunDef> {
+        let mut tokens = vec![self.match_any(BCFunDef::lookaheads())?.into_rc()];
         let name = tokens[0].as_str().to_string();
         let block = self.expect_block().chain_err(|| {
             format!("while parsing function `{}`", name)
         })?;
         tokens.append_node(&block);
-        Ok(FunDef::new(tokens, name, block))
+        Ok(BCFunDef::new(tokens, name, block))
     }
 
     fn expect_stmt(&mut self) -> Result<Stmt> {
@@ -380,13 +380,13 @@ mod test {
 
     // AST Items
     macro_rules! top_level {
-        (FunDef $($tail:tt)+) => { TopLevel::FunDef(fun!($($tail)+)) };
+        (BCFunDef $($tail:tt)+) => { TopLevel::BCFunDef(fun!($($tail)+)) };
         (Import $($tail:tt)+) => { TopLevel::Import(import!($($tail)+)) };
         (Foreign $($tail:tt)+) => { TopLevel::Foreign(foreign!($($tail)+)) };
     }
 
     macro_rules! fun {
-        ($name:expr => { $($tail:tt)* }) => { FunDef::new(vec![], $name.to_string(), block!($($tail)*)) };
+        ($name:expr => { $($tail:tt)* }) => { BCFunDef::new(vec![], $name.to_string(), block!($($tail)*)) };
     }
 
     macro_rules! import {
@@ -536,13 +536,13 @@ mod test {
                 int open [ string string ]
                 int close [ int ]
             }))
-            (expect_top_level, top_level!(FunDef "foo" => {
+            (expect_top_level, top_level!(BCFunDef "foo" => {
                 (Stack Push Int 1 Push Int 2 Push Int 3 Pop Ident "a" Pop Ident "b" Pop Ident "c"
                        Push Ident "$" Pop Nil
                        Push Nil Push Stack [(Int 1) (Int 2) (Int 3) (Int 4) (Int 5)]
                        Push Nil Push Stack [(Int 16) (Int 2) (Int 8)])
             }))
-            (expect_top_level, top_level!(FunDef "main" => {
+            (expect_top_level, top_level!(BCFunDef "main" => {
                 (Stack
                     Push Ident "a"
                     Pop Ident "a"
