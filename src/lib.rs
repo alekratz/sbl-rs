@@ -10,11 +10,15 @@ extern crate matches;
 extern crate enum_methods;
 extern crate libc;
 extern crate libffi;
+extern crate itertools;
+extern crate petgraph;
 
 pub mod syntax;
 pub mod compile;
 pub mod vm;
 pub mod common;
+pub mod ir;
+pub mod internal;
 
 pub mod errors {
     use common::*;

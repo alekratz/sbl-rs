@@ -1,6 +1,6 @@
 use errors::*;
 use syntax::{ForeignFn, ItemType};
-use vm::{State, Val};
+use vm::{State, BCVal};
 use libc::{self, RTLD_NOW, c_char};
 use libffi::low::CodePtr;
 use libffi::high::call::{call, Arg};
@@ -67,15 +67,15 @@ impl ForeignFn {
         let ffi_args = val_args
             .iter()
             .map(|v| match v {
-                &Val::Int(i) => FfiVal::Int(i),
-                &Val::Char(c) => FfiVal::Char(c as u8),
-                &Val::String(ref s) => {
+                &BCVal::Int(i) => FfiVal::Int(i),
+                &BCVal::Char(c) => FfiVal::Char(c as u8),
+                &BCVal::String(ref s) => {
                     let c_str = CString::new(s.as_str()).unwrap();
                     string_pool.push(c_str);
                     FfiVal::String(string_pool.last().as_ref().unwrap().as_ptr())
                 }
-                &Val::Bool(b) => FfiVal::Bool(if b { 1 } else { 0 }),
-                &Val::Nil => FfiVal::Nil(()),
+                &BCVal::Bool(b) => FfiVal::Bool(if b { 1 } else { 0 }),
+                &BCVal::Nil => FfiVal::Nil(()),
                 _ => unreachable!(),
             })
             .collect::<Vec<_>>();
@@ -91,18 +91,18 @@ impl ForeignFn {
                 .unwrap();
             let code_ptr = CodePtr::from_ptr(*foreign as *const _);
             match self.return_type {
-                ItemType::Int(_) => Val::Int(
+                ItemType::Int(_) => BCVal::Int(
                     unsafe { call::<i32>(code_ptr, args.as_slice()) } as i64,
                 ),
-                ItemType::Char(_) => Val::Char(
+                ItemType::Char(_) => BCVal::Char(
                     unsafe { call::<u8>(code_ptr, args.as_slice()) } as char,
                 ),
-                ItemType::Bool(_) => Val::Bool(
+                ItemType::Bool(_) => BCVal::Bool(
                     unsafe { call::<i32>(code_ptr, args.as_slice()) } != 0,
                 ),
                 ItemType::Nil => {
                     unsafe { call::<()>(code_ptr, args.as_slice()) };
-                    Val::Nil
+                    BCVal::Nil
                 }
                 _ => unreachable!(),
             }

@@ -9,6 +9,7 @@ pub type Tokens = Vec<RcToken>;
 pub trait TokensVec {
     fn append_node<T: ASTNode>(&mut self, node: &T);
     fn range(&self) -> Range;
+    fn contains_bake_token(&self) -> bool;
 }
 
 impl TokensVec for Tokens {
@@ -21,6 +22,15 @@ impl TokensVec for Tokens {
         let first = self.first().unwrap().range();
         let last = self.last().unwrap().range();
         Range::new(first.start, last.end)
+    }
+
+    fn contains_bake_token(&self) -> bool {
+        for t in self {
+            if t.token_type() == TokenType::KwBake {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -165,7 +175,7 @@ impl From<Token> for Item {
             TokenType::BasedInt(base) => {
                 Item::new(
                     vec![other.into_rc()],
-                    ItemType::Int(i64::from_str_radix(&other_str[2 ..], base as u32).unwrap()),
+                    ItemType::Int(i64::from_str_radix(&other_str[2..], base as u32).unwrap()),
                 )
             }
             TokenType::Ident => {
@@ -264,6 +274,7 @@ pub enum Stmt {
     Stack(StackStmt),
     Br(BrStmt),
     Loop(LoopStmt),
+    Bake(BakeStmt),
 }
 
 impl ASTNode for Stmt {
@@ -272,6 +283,7 @@ impl ASTNode for Stmt {
             Stmt::Stack(ref s) => s.tokens(),
             Stmt::Br(ref s) => s.tokens(),
             Stmt::Loop(ref s) => s.tokens(),
+            Stmt::Bake(ref s) => s.tokens(),
         }
     }
 
@@ -306,6 +318,13 @@ impl PartialEq for Stmt {
                     false
                 }
             }
+            &Bake(ref b) => {
+                if let &Bake(ref o) = other {
+                    b == o
+                } else {
+                    false
+                }
+            }
         }
     }
 }
@@ -335,6 +354,7 @@ macro_rules! from_stmt {
 from_stmt!(Stack, StackStmt);
 from_stmt!(Br, BrStmt);
 from_stmt!(Loop, LoopStmt);
+from_stmt!(Bake, BakeStmt);
 
 //
 // Stack statements
@@ -480,28 +500,39 @@ block_stmt!(LoopStmt
             new => (block: Block)
             lookaheads => (TokenType::KwLoop));
 
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
+pub struct BakeStmt {
+    pub tokens: Tokens,
+    pub block: Block,
+}
+
+block_stmt!(BakeStmt
+            new => (block: Block)
+            lookaheads => (TokenType::KwBake));
+
 //
 // Top level statements
 //
 
-#[derive(EnumGetters, Clone, PartialEq, Debug)]
+#[derive(EnumAsGetters, Clone, PartialEq, Debug)]
 pub enum TopLevel {
-    FunDef(FunDef),
+    BCFunDef(BCFunDef),
     Import(Import),
     Foreign(Foreign),
 }
 
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
-pub struct FunDef {
+pub struct BCFunDef {
     pub tokens: Tokens,
     pub name: String,
     pub block: Block,
 }
 
-impl FunDef {
+impl BCFunDef {
     pub fn new(tokens: Tokens, name: String, block: Block) -> Self {
-        FunDef {
+        BCFunDef {
             tokens,
             name,
             block,
@@ -509,7 +540,7 @@ impl FunDef {
     }
 }
 
-impl ASTNode for FunDef {
+impl ASTNode for BCFunDef {
     fn tokens(&self) -> &[RcToken] {
         &self.tokens
     }
@@ -520,18 +551,18 @@ impl ASTNode for FunDef {
 }
 
 #[cfg(test)]
-impl PartialEq for FunDef {
+impl PartialEq for BCFunDef {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.block == other.block
     }
 }
 
 #[cfg(test)]
-impl Debug for FunDef {
+impl Debug for BCFunDef {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "FunDef {{ name: {:?} block: {:?} }}",
+            "BCFunDef {{ name: {:?} block: {:?} }}",
             self.name,
             self.block
         )
@@ -687,7 +718,7 @@ pub struct AST {
 /*
 /// A pre-processed AST, ready to be compiled.
 pub struct FilledAST {
-    pub ast: FunDefList,
+    pub ast: BCFunDefList,
     pub path: String,
 }
 */

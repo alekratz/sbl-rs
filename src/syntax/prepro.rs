@@ -34,7 +34,7 @@ impl AST {
         let AST { ast, path } = self;
         let (ast, errors) = ast.into_iter()
             .map(|top| match top {
-                TopLevel::FunDef(_) |
+                TopLevel::BCFunDef(_) |
                 TopLevel::Foreign(_) => Ok(vec![top]),
                 TopLevel::Import(i) => i.import(search_dirs),
             })

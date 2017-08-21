@@ -6,6 +6,7 @@ use sbl::common::*;
 use sbl::errors::*;
 use sbl::vm::*;
 use sbl::compile::*;
+use sbl::internal::*;
 use std::process;
 use std::env;
 use std::path::Path;
@@ -20,20 +21,21 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
     let filled_ast = process_source_path(path, search_dirs).chain_err(
         || "Parse error",
     )?;
-    let compiler = CompileBytes::new(filled_ast).builtins(&*BUILTINS);
+    let ir_compiler = CompileIR::new(&filled_ast).builtins(&*BUILTINS);
+    let compiler = CompileBytes::new(ir_compiler.compile()?);
     let fun_table = {
         let fun_table = compiler.compile().chain_err(|| "Compile error")?;
         // run optimizations
         if optimize {
-            OptimizeInline::new(fun_table).optimize()
+            OptimizeBCInline::new(fun_table).optimize()
         } else {
             fun_table
         }
     };
     if dump {
         for f in fun_table.iter().filter_map(
-            |(_, f)| if let &Fun::UserFun(ref f) =
-                f as &Fun
+            |(_, f)| if let &BCFun::UserFun(ref f) =
+                f as &BCFun
             {
                 Some(f)
             } else {
@@ -48,8 +50,7 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
     if !compile_only {
         let mut vm = VM::new(fun_table);
         vm.run()
-    }
-    else {
+    } else {
         Ok(())
     }
 }

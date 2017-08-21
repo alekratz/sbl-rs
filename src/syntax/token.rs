@@ -39,7 +39,7 @@ lazy_static! {
 }
 const IDENT_CHARS: &str = "_!@$%^&|*-+/=<>abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(Eq, Hash, PartialEq, Copy, Clone, Debug)]
 pub enum TokenType {
     Comment,
 
@@ -68,6 +68,7 @@ pub enum TokenType {
     KwF,
     KwLoop,
     KwForeign,
+    KwBake,
 }
 
 impl Display for TokenType {
@@ -99,6 +100,7 @@ impl Display for TokenType {
             KwF => "F keyword",
             KwLoop => "loop keyword",
             KwForeign => "foreign keyword",
+            KwBake => "compile-time bake keyword",
         };
         write!(f, "{}", s)
     }
@@ -363,14 +365,13 @@ impl<'c> Tokenizer<'c> {
             while !(self.curr == Some('!') && self.next == Some('#')) {
                 self.next_char();
             }
-            self.match_char('!');
-            self.match_char('#'); // skip past the !#
-        }
-        else {
+            self.match_char('!')?;
+            self.match_char('#')?; // skip past the !#
+        } else {
             while self.curr.is_some() && self.curr != Some('\n') {
                 self.next_char();
             }
-            self.match_char('\n'); // skip past the newline
+            self.match_char('\n')?; // skip past the newline
         }
         self.ok_token(TokenType::Comment)
     }
@@ -382,37 +383,37 @@ impl<'c> Tokenizer<'c> {
         const HEX_DIGITS: &str = "0123456789abcdefABCDEF";
         const OCT_DIGITS: &str = "01234567";
         const BIN_DIGITS: &str = "01";
-        
+
         self.try_match_char('-');
-        
-        if self.curr.map(|c| c == '0').unwrap_or(false) && self.next.map(|c| PREFICES.contains(&c)).unwrap_or(false) {
+
+        if self.curr.map(|c| c == '0').unwrap_or(false) &&
+            self.next.map(|c| PREFICES.contains(&c)).unwrap_or(false)
+        {
             let (digits, base) = match self.next {
                 // hex number
                 Some('x') | Some('X') => {
                     self.next_char();
                     self.next_char();
                     (HEX_DIGITS, 16)
-                },
+                }
                 // binary number
                 Some('b') | Some('B') => {
                     self.next_char();
                     self.next_char();
                     (BIN_DIGITS, 2)
-                },
+                }
                 // octal number
                 Some('o') => {
                     self.next_char();
                     self.next_char();
                     (OCT_DIGITS, 8)
-                },
-                Some(_) => unreachable!(),
-                None => unreachable!(),
+                }
+                _ => unreachable!(),
             };
             self.match_any_char(digits)?;
-            while let Some(_) = self.try_match_any(digits) { }
+            while let Some(_) = self.try_match_any(digits) {}
             self.ok_token(TokenType::BasedInt(base))
-        }
-        else {
+        } else {
             self.match_any_char(DEC_DIGITS)?;
             while let Some(_) = self.try_match_any(DEC_DIGITS) {}
             self.ok_token(TokenType::Int)
@@ -463,6 +464,7 @@ impl<'c> Tokenizer<'c> {
                     "T" => TokenType::KwT,
                     "F" => TokenType::KwF,
                     "foreign" => TokenType::KwForeign,
+                    "bake" => TokenType::KwBake,
                 }
             };
         };

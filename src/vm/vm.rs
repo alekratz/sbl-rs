@@ -1,18 +1,21 @@
 use errors::*;
 use vm::*;
+use internal::*;
 use libc::c_void;
 use std::collections::HashMap;
 use std::cell::RefCell;
+use std::rc::Rc;
 
-pub struct FunState {
-    pub fun: Rc<UserFun>,
+#[derive(Clone, Debug)]
+pub struct BCFunState {
+    pub fun: Rc<BCUserFun>,
     pub pc: usize,
-    pub locals: HashMap<String, Val>,
+    pub locals: HashMap<String, BCVal>,
     // TODO : callsite
 }
 
-impl FunState {
-    pub fn load(&self, name: &str) -> Result<&Val> {
+impl BCFunState {
+    pub fn load(&self, name: &str) -> Result<&BCVal> {
         if let Some(ref val) = self.locals.get(name) {
             Ok(val)
         } else {
@@ -22,14 +25,14 @@ impl FunState {
         }
     }
 
-    pub fn store(&mut self, name: String, val: Val) {
+    pub fn store(&mut self, name: String, val: BCVal) {
         self.locals.insert(name.to_string(), val);
     }
 }
 
-impl From<Rc<UserFun>> for FunState {
-    fn from(other: Rc<UserFun>) -> Self {
-        FunState {
+impl From<Rc<BCUserFun>> for BCFunState {
+    fn from(other: Rc<BCUserFun>) -> Self {
+        BCFunState {
             fun: other,
             pc: 0,
             locals: HashMap::new(),
@@ -37,9 +40,10 @@ impl From<Rc<UserFun>> for FunState {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct State {
-    pub stack: Vec<Val>,
-    pub call_stack: Vec<FunState>,
+    pub stack: Vec<BCVal>,
+    pub call_stack: Vec<BCFunState>,
     pub dl_handles: HashMap<String, *mut c_void>,
     pub foreign_functions: HashMap<String, *mut c_void>,
 }
@@ -54,17 +58,17 @@ impl State {
         }
     }
 
-    pub fn load(&self, name: &str) -> Result<&Val> {
+    pub fn load(&self, name: &str) -> Result<&BCVal> {
         let caller = self.current_fun();
         caller.load(name)
     }
 
-    pub fn store(&mut self, name: String, val: Val) {
+    pub fn store(&mut self, name: String, val: BCVal) {
         let mut caller = self.current_fun_mut();
         caller.store(name, val);
     }
 
-    pub fn peek(&self) -> Result<&Val> {
+    pub fn peek(&self) -> Result<&BCVal> {
         if let Some(val) = self.stack.last() {
             Ok(val)
         } else {
@@ -72,11 +76,15 @@ impl State {
         }
     }
 
-    pub fn push(&mut self, val: Val) {
+    pub fn push_all(&mut self, vals: &[BCVal]) {
+        self.stack.extend_from_slice(vals);
+    }
+
+    pub fn push(&mut self, val: BCVal) {
         self.stack.push(val)
     }
 
-    pub fn pop(&mut self) -> Result<Val> {
+    pub fn pop(&mut self) -> Result<BCVal> {
         if let Some(val) = self.stack.pop() {
             Ok(val)
         } else {
@@ -110,19 +118,19 @@ impl State {
         }
     }
 
-    pub fn current_fun(&self) -> &FunState {
+    pub fn current_fun(&self) -> &BCFunState {
         self.call_stack.last().unwrap()
     }
 
-    pub fn current_fun_mut(&mut self) -> &mut FunState {
+    pub fn current_fun_mut(&mut self) -> &mut BCFunState {
         self.call_stack.last_mut().unwrap()
     }
 
-    pub fn push_fun(&mut self, fun_state: FunState) {
+    pub fn push_fun(&mut self, fun_state: BCFunState) {
         self.call_stack.push(fun_state);
     }
 
-    pub fn pop_fun(&mut self) -> FunState {
+    pub fn pop_fun(&mut self) -> BCFunState {
         self.call_stack.pop().unwrap()
     }
 
@@ -141,27 +149,43 @@ impl State {
     }
 }
 
+impl From<VM> for State {
+    fn from(other: VM) -> Self {
+        other.state.into_inner()
+    }
+}
+
+#[derive(Clone)]
 pub struct VM {
-    fun_table: FunRcTable,
+    fun_table: BCFunRcTable,
     state: RefCell<State>,
+    user_fun_cache: HashMap<String, Rc<BCUserFun>>,
 }
 
 impl VM {
-    pub fn new(fun_table: FunTable) -> Self {
-        let mut rc_table = FunRcTable::new();
+    pub fn new(fun_table: BCFunTable) -> Self {
+        let mut rc_table = BCFunRcTable::new();
+        // TODO : itertools RC iterator
         for (k, v) in fun_table {
             rc_table.insert(k, Rc::new(v));
         }
         VM {
             fun_table: rc_table,
             state: RefCell::new(State::new()),
+            user_fun_cache: HashMap::new(),
         }
+    }
+
+    pub fn add_fun(&mut self, name: String, fun: BCFun) {
+        // XXX - I don't like this function, is there a better way we can update a funtable owned
+        // by a VM? (probably not)
+        self.fun_table.insert(name, Rc::new(fun));
     }
 
     pub fn run(&mut self) -> Result<()> {
         // Load all of the foreign functions
         for f in self.fun_table.iter().filter_map(|(_, f)| {
-            if let &Fun::ForeignFun(ref f) = f as &Fun {
+            if let &BCFun::ForeignFun(ref f) = f as &BCFun {
                 Some(f)
             } else {
                 None
@@ -173,30 +197,61 @@ impl VM {
         self.invoke("main")
     }
 
-    fn invoke(&mut self, fun_name: &str) -> Result<()> {
-        let fun = self.fun_table
-            .get(fun_name)
-            .expect(&format!(
-                "expected function `{}` but none was found; compiler should have caught this",
-                fun_name
-            ))
-            .clone();
-        match &fun as &Fun {
-            &Fun::UserFun(ref fun) => {
-                {
-                    let mut state = self.state.borrow_mut();
-                    state.push_fun(fun.clone().into());
-                }
-                self.invoke_user_fun()?;
-                {
-                    let mut state = self.state.borrow_mut();
-                    state.pop_fun();
-                }
-                Ok(())
+    pub fn invoke(&mut self, fun_name: &str) -> Result<()> {
+        if let Some(fun) = self.user_fun_cache.get(fun_name).map(Rc::clone) {
+            {
+                let mut state = self.state.borrow_mut();
+                state.push_fun(fun.into());
             }
-            &Fun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
-            &Fun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
+            self.invoke_user_fun()?;
+            {
+                let mut state = self.state.borrow_mut();
+                state.pop_fun();
+            }
+            Ok(())
         }
+        else {
+            let fun = self.fun_table
+                .get(fun_name)
+                .expect(&format!(
+                    "expected function `{}` but none was found; compiler should have caught this",
+                    fun_name
+                ))
+                .clone();
+            match &fun as &BCFun {
+                &BCFun::UserFun(ref fun) => {
+                    // new user fun cache entry
+                    let ptr = Rc::new(fun.clone());
+                    self.user_fun_cache.insert(fun_name.to_string(), ptr.clone());
+                    {
+                        let mut state = self.state.borrow_mut();
+                        state.push_fun(ptr.clone().into());
+                    }
+                    self.invoke_user_fun()?;
+                    {
+                        let mut state = self.state.borrow_mut();
+                        state.pop_fun();
+                    }
+                    Ok(())
+                }
+                &BCFun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
+                &BCFun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
+            }
+        }
+    }
+
+    pub fn inject_user_fun(&mut self, fun: BCUserFun) -> Result<()> {
+        let rc = Rc::new(fun);
+        {
+            let mut state = self.state.borrow_mut();
+            state.push_fun(rc.into());
+        }
+        self.invoke_user_fun()?;
+        {
+            let mut state = self.state.borrow_mut();
+            state.pop_fun();
+        }
+        Ok(())
     }
 
     fn invoke_user_fun(&mut self) -> Result<()> {
@@ -210,16 +265,21 @@ impl VM {
 
             {
                 match bc_type {
-                    BcType::Push => {
+                    BCType::Push => {
                         let mut state = self.state.borrow_mut();
                         state.push(val.unwrap());
                         state.increment_pc();
                     }
-                    BcType::PushL => {
+                    BCType::PushA => {
+                        let mut state = self.state.borrow_mut();
+                        state.push_all(val.unwrap().as_stack());
+                        state.increment_pc();
+                    }
+                    BCType::PushL => {
                         let mut state = self.state.borrow_mut();
                         let item = state.pop()?;
                         let mut stack = state.pop()?;
-                        if let Val::Stack(ref mut st) = stack {
+                        if let BCVal::Stack(ref mut st) = stack {
                             st.push(item);
                         } else {
                             // This should - for now - never occur
@@ -228,61 +288,62 @@ impl VM {
                         state.push(stack);
                         state.increment_pc();
                     }
-                    BcType::Pop => {
+                    // TODO : PushA
+                    BCType::Pop => {
                         let mut state = self.state.borrow_mut();
                         let tos = state.pop()?;
                         let val = val.unwrap();
                         match val {
-                            Val::Ident(ident) => state.store(ident, tos),
-                            Val::Nil => { /* do nothing */ }
+                            BCVal::Ident(ident) => state.store(ident, tos),
+                            BCVal::Nil => { /* do nothing */ }
                             _ => unreachable!(),
                         }
                         state.increment_pc();
                     }
-                    BcType::PopN => {
+                    BCType::PopN => {
                         let mut state = self.state.borrow_mut();
-                        let i = val.unwrap().int();
+                        let i = *val.unwrap().as_int();
                         state.popn(i)?;
                         state.increment_pc();
                     }
-                    BcType::Load => {
+                    BCType::Load => {
                         let mut state = self.state.borrow_mut();
                         let val = val.unwrap();
-                        let ident = val.ident();
+                        let ident = val.as_ident();
                         let val = state.load(&ident)?.clone();
                         state.push(val);
                         state.increment_pc();
                     }
-                    BcType::JmpZ => {
+                    BCType::JmpZ => {
                         let mut state = self.state.borrow_mut();
                         let jump_taken = {
                             let tos = state.peek()?;
                             match tos {
-                                &Val::Bool(false) |
-                                &Val::Nil => true,
+                                &BCVal::Bool(false) |
+                                &BCVal::Nil => true,
                                 _ => false,
                             }
                         };
                         if jump_taken {
-                            let addr = val.unwrap().int() as usize;
+                            let addr = *val.unwrap().as_int() as usize;
                             state.set_pc(addr);
                         } else {
                             state.increment_pc();
                         }
                     }
-                    BcType::Jmp => {
+                    BCType::Jmp => {
                         let mut state = self.state.borrow_mut();
-                        let addr = val.unwrap().int() as usize;
+                        let addr = *val.unwrap().as_int() as usize;
                         state.set_pc(addr);
                     }
-                    BcType::Call => {
+                    BCType::Call => {
                         let val = val.unwrap();
-                        let fun_name = val.ident();
+                        let fun_name = val.as_ident();
                         self.invoke(fun_name)?;
                         let mut state = self.state.borrow_mut();
                         state.increment_pc();
                     }
-                    BcType::Ret => break,
+                    BCType::Ret => break,
                 }
             }
         }

@@ -55,7 +55,7 @@ test-printing {
 }
 
 test-booleans {
-    5 u- ^ .l .r
+    -5 ^ .l .r
     l r ==
     br {
         l !print " == " !print r !println
@@ -137,10 +137,52 @@ test-stacks {
         "" !println
         ^len 0 >
     }
-    .2
+    .2 "" !println
+
+    [ '3 '. '1 '4 '1 '5 '9 ]  # create a stack with some characters
+    # reverse, reverse
+    "this string is being printed out in reverse: " !println
+    !reverse
+    T
+    loop {
+        .@  # discard boolean
+        ^pop !print  # pop the top item off the local stack, and print it
+        ^len 0 >  # compare the length
+    }
+    .2 "" !println
+
+    [1 2 3] .first
+    [4 5 6] .second
+    "concatenating these lists: " !print
+    first !print " " !print
+    second !println
+    second first
+    !concat
+    !println
 }
 
-main {
+test-baked-calls {
+    bake { "running baked functions ..." !println }
+    bake {
+        "baking factorial call" !println
+        6 fact
+    }
+
+    "here's a baked factorial: " !print
+    !println
+
+    bake {
+        "baking basic stack functions" !println
+        15
+    }
+    "here's a baked stack item: " !print
+    !println
+}
+
+test-strings {
+}
+
+run-tests {
     "testing number functions" !println
     "-----" !println
     test-numbers
@@ -164,6 +206,12 @@ main {
     test-stacks
 
     "\n==========\n" !println
+    
+    "testing baked calls" !println
+    "-----" !println
+    test-baked-calls
+
+    "\n==========\n" !println
 
     $ !print " items leftover on the stack: " !println
     $ 0 >
@@ -179,4 +227,8 @@ main {
     "deleting file" !println
     "test.txt" unlink
     0 >= "status: " !print !println
+}
+
+main {
+    run-tests
 }
