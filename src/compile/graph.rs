@@ -50,10 +50,13 @@ pub fn build_bake_call_graph(fun_table: &IRFunTable) -> Result<CallGraph> {
                     if funs.contains(name.as_str()) {
                         return Err(format!("which calls `{}`", name).into());
                     }
-                    if fun_table.get(name).map(IRFun::is_user_fun).unwrap_or(false) {
+                    let user_fun = fun_table.get(name);
+                    if user_fun.map(IRFun::is_user_fun).unwrap_or(false) {
+                        let user_fun = user_fun.unwrap()
+                            .as_user_fun();
                         funs.insert(name.as_str());
-                        get_all_bake_calls(&fun_table.get(name).unwrap().as_user_fun().body, fun_table, funs)
-                            .chain_err(|| format!("which calls `{}`", name))?;
+                        get_all_bake_calls(&user_fun.body, fun_table, funs)
+                            .chain_err(|| format!("which calls `{}` (in {})", name, user_fun.tokens.range()))?;
                     }
                 }
                 &IRType::Bake => {
@@ -90,9 +93,9 @@ pub fn build_bake_call_graph(fun_table: &IRFunTable) -> Result<CallGraph> {
                         .as_ref()
                         .unwrap()
                         .as_bake_block();
-                    let mut funcalls = hashset!();
+                    let mut funcalls = hashset!(fun.name.as_str());
                     get_all_bake_calls(&body, fun_table, &mut funcalls)
-                        .chain_err(|| format!("cycle detected in `{}`", fun.name))?;
+                        .chain_err(|| format!("cycle detected in `{}` (in {})", fun.name, fun.tokens.range()))?;
                     for fname in funcalls {
                         if let Some(callee) = node_table.get(fname) {
                             fun_graph.add_edge(*node, *callee, ());
