@@ -1,5 +1,10 @@
+pub mod fun;
+pub mod val;
+
+pub use self::fun::*;
+pub use self::val::*;
+
 use ir::*;
-use vm::*;
 use syntax::*;
 use std::fmt::{self, Formatter, Display};
 

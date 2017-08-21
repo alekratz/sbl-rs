@@ -1,7 +1,6 @@
 use ir::*;
 use vm::*;
 use syntax::*;
-use internal::*;
 use errors::*;
 use compile::Compile;
 use std::collections::HashMap;

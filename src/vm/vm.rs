@@ -1,6 +1,5 @@
 use errors::*;
-use vm::*;
-use internal::*;
+use bc::*;
 use libc::c_void;
 use std::collections::HashMap;
 use std::cell::RefCell;

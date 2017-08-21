@@ -1,5 +1,4 @@
 use errors::*;
-
 use ir::*;
 use std::cmp::Ordering;
 use std::fmt::{self, Formatter, Display};

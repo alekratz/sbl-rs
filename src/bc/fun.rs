@@ -1,12 +1,11 @@
-use syntax::*;
 use ir::*;
-
+use bc::*;
 use vm::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::fmt::{Debug, Formatter, self};
+use syntax::*;
 
-pub type IRFunTable = HashMap<String, IRFun>;
 pub type BCFunTable = HashMap<String, BCFun>;
 pub type BCFunRcTable = HashMap<String, Rc<BCFun>>;
 

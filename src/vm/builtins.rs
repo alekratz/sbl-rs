@@ -1,3 +1,4 @@
+use bc::*;
 use errors::*;
 use vm::*;
 use std::collections::HashMap;

@@ -1,6 +1,5 @@
 use syntax::*;
 use ir::*;
-use internal::*;
 use errors::*;
 use petgraph::Graph;
 use std::collections::{HashMap, HashSet};

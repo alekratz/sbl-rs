@@ -2,6 +2,7 @@ use ir::*;
 use vm::*;
 use syntax::*;
 use std::fmt::{Debug, Formatter, self};
+use std::collections::HashMap;
 
 pub type IRBody = Vec<IR>;
 
@@ -78,3 +79,5 @@ impl Debug for IRFun {
         })
     }
 }
+
+pub type IRFunTable = HashMap<String, IRFun>;

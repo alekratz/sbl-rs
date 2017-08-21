@@ -1,6 +1,7 @@
 use errors::*;
-use syntax::{ForeignFn, ItemType};
-use vm::{State, BCVal};
+use syntax::*;
+use vm::*;
+use bc::*;
 use libc::{self, RTLD_NOW, c_char};
 use libffi::low::CodePtr;
 use libffi::high::call::{call, Arg};

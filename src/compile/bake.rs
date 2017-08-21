@@ -1,16 +1,11 @@
 use syntax::*;
+use bc::*;
 use ir::*;
 use vm::*;
 use compile::*;
 use errors::*;
-use internal::*;
 
-use itertools::Itertools;
-use petgraph::Direction;
-use petgraph::algo::{is_cyclic_directed, toposort};
-use petgraph::visit::Bfs;
-use std::collections::HashMap;
-use std::rc::Rc;
+use petgraph::algo::toposort;
 use std::cell::RefCell;
 
 pub struct BakeIRFunTable {

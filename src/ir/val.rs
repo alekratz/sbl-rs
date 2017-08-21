@@ -1,5 +1,5 @@
 use ir::*;
-use vm::*;
+use bc::*;
 use syntax::*;
 use errors::*;
 use std::cmp::Ordering;

@@ -1,7 +1,6 @@
 use ir::*;
-use vm::*;
+use bc::*;
 use errors::*;
-use internal::*;
 use compile::{Compile, Optimize, BakeIRFunTable, build_bake_call_graph};
 use std::collections::HashMap;
 
