@@ -33,7 +33,7 @@ fn ff_key(lib: &str, name: &str) -> String {
     format!("{}_{}", lib, name)
 }
 
-impl ForeignFn {
+impl ForeignFun {
     /// Makes a call into a foreign function.
     pub(in vm) fn call(&self, state: &mut State) -> Result<()> {
         // string pool holds all of the strings that we have to re-allocate as CStrings

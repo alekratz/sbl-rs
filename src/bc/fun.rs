@@ -1,6 +1,7 @@
 use ir::*;
 use bc::*;
 use vm::*;
+use internal::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::fmt::{Debug, Formatter, self};
@@ -59,7 +60,7 @@ impl From<IRUserFun> for BCUserFun {
 #[derive(EnumIsA)]
 pub enum BCFun {
     UserFun(BCUserFun),
-    ForeignFun(ForeignFn),
+    ForeignFun(ForeignFun),
     BuiltinFun(&'static BuiltinFun),
 }
 
@@ -86,9 +87,9 @@ impl Clone for BCFun {
 impl From<IRFun> for BCFun {
     fn from(other: IRFun) -> Self {
         match other {
-            IRFun::UserFun(u) => BCFun::UserFun(u.into()),
-            IRFun::ForeignFun(f) => BCFun::ForeignFun(f),
-            IRFun::BuiltinFun(b) => BCFun::BuiltinFun(b),
+            Fun::UserFun(u) => BCFun::UserFun(u.into()),
+            Fun::ForeignFun(f) => BCFun::ForeignFun(f),
+            Fun::BuiltinFun(b) => BCFun::BuiltinFun(b),
         }
     }
 }
@@ -107,7 +108,7 @@ impl Debug for BCFun {
 // see https://github.com/rust-lang/rust/issues/26264 as to why this doesn't work :|
 pub enum VmFun<F: 'static> where F: Fn(&mut State) -> Result<()> {
     BCUserFun(Rc<BCUserFun>),
-    ForeignFun(ForeignFn),
+    ForeignFun(ForeignFun),
     BuiltinFun(F),
 }
 

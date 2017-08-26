@@ -1,5 +1,6 @@
 use syntax::*;
 use ir::*;
+use internal::*;
 use errors::*;
 use petgraph::Graph;
 use std::collections::{HashMap, HashSet};
@@ -18,7 +19,7 @@ pub fn build_call_graph(fun_table: &IRFunTable) -> CallGraph {
     // hook up function calls
     for (fname, node) in &node_table {
         let fun = fun_table.get(fname).unwrap();
-        if let &IRFun::UserFun(ref fun) = fun {
+        if let &Fun::UserFun(ref fun) = fun {
             for ir in &fun.body {
                 if ir.ir_type == IRType::Call {
                     // find the node and hook it up
@@ -50,7 +51,7 @@ pub fn build_bake_call_graph(fun_table: &IRFunTable) -> Result<CallGraph> {
                         return Err(format!("which calls `{}`", name).into());
                     }
                     let user_fun = fun_table.get(name);
-                    if user_fun.map(IRFun::is_user_fun).unwrap_or(false) {
+                    if user_fun.map(Fun::is_user_fun).unwrap_or(false) {
                         let user_fun = user_fun.unwrap()
                             .as_user_fun();
                         funs.insert(name.as_str());
@@ -85,7 +86,7 @@ pub fn build_bake_call_graph(fun_table: &IRFunTable) -> Result<CallGraph> {
     // hook up function calls
     for (fname, node) in &node_table {
         let fun = fun_table.get(fname).unwrap();
-        if let &IRFun::UserFun(ref fun) = fun {
+        if let &Fun::UserFun(ref fun) = fun {
             for ir in &fun.body {
                 if ir.ir_type == IRType::Bake {
                     let body = ir.val

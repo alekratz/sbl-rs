@@ -2,6 +2,7 @@ use ir::*;
 use vm::*;
 use syntax::*;
 use errors::*;
+use internal::*;
 use compile::Compile;
 use std::collections::HashMap;
 
@@ -49,7 +50,7 @@ impl<'ast> Compile for CompileIR<'ast> {
 
                 self.fun_table.insert(
                     built_fun.name.clone(),
-                    Some(IRFun::UserFun(built_fun)),
+                    Some(Fun::UserFun(built_fun)),
                 );
             }
         }
@@ -73,7 +74,7 @@ impl<'ast> CompileIR<'ast> {
     /// functions that have been defined already.
     pub fn builtins(mut self, builtins: &'static HashMap<&'static str, BuiltinFun>) -> Self {
         for (k, v) in builtins.into_iter().map(|(k, v)| {
-            (k.to_string(), Some(IRFun::BuiltinFun(v)))
+            (k.to_string(), Some(Fun::BuiltinFun(v)))
         })
         {
             self.fun_table.insert(k, v);
@@ -88,7 +89,7 @@ impl<'ast> CompileIR<'ast> {
         fn check_defined(name: &str, fun_table: &BoringTable) -> Result<()> {
             if let Some(other) = fun_table.get(name) {
                 match *other {
-                    Some(IRFun::ForeignFun(_)) |
+                    Some(Fun::ForeignFun(_)) |
                     None => {
                         // None means it's a function we inserted earlier
                         return Err(
@@ -118,7 +119,7 @@ impl<'ast> CompileIR<'ast> {
                         )?;
                         self.fun_table.insert(
                             frn_fun.name.clone(),
-                            Some(IRFun::ForeignFun(frn_fun.clone())),
+                            Some(Fun::ForeignFun(frn_fun.clone())),
                         );
                     }
                 }

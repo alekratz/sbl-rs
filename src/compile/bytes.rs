@@ -1,5 +1,6 @@
 use ir::*;
 use bc::*;
+use internal::*;
 use errors::*;
 use compile::{Compile, Optimize, BakeIRFunTable, build_bake_call_graph};
 use std::collections::HashMap;
@@ -20,7 +21,7 @@ impl Compile for CompileBytes {
         let bake_graph = build_bake_call_graph(&self.fun_table)?;
         let (bc_funs, bake_funs): (IRFunTable, IRFunTable) = self.fun_table
             .into_iter()
-            .partition(|&(_, ref v)| if let &IRFun::UserFun(ref fun) = v {
+            .partition(|&(_, ref v)| if let &Fun::UserFun(ref fun) = v {
                 !fun.contains_bake
             } else {
                 true
