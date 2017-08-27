@@ -1,5 +1,6 @@
 use errors::*;
 use bc::*;
+use internal::*;
 use libc::c_void;
 use std::collections::HashMap;
 use std::cell::RefCell;
@@ -184,7 +185,7 @@ impl VM {
     pub fn run(&mut self) -> Result<()> {
         // Load all of the foreign functions
         for f in self.fun_table.iter().filter_map(|(_, f)| {
-            if let &BCFun::ForeignFun(ref f) = f as &BCFun {
+            if let &Fun::ForeignFun(ref f) = f as &BCFun {
                 Some(f)
             } else {
                 None
@@ -218,7 +219,7 @@ impl VM {
                 ))
                 .clone();
             match &fun as &BCFun {
-                &BCFun::UserFun(ref fun) => {
+                &Fun::UserFun(ref fun) => {
                     // new user fun cache entry
                     let ptr = Rc::new(fun.clone());
                     self.user_fun_cache.insert(fun_name.to_string(), ptr.clone());
@@ -233,8 +234,8 @@ impl VM {
                     }
                     Ok(())
                 }
-                &BCFun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
-                &BCFun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
+                &Fun::BuiltinFun(fun) => fun(&mut self.state.borrow_mut()),
+                &Fun::ForeignFun(ref fun) => fun.call(&mut self.state.borrow_mut()),
             }
         }
     }

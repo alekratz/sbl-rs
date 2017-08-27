@@ -55,3 +55,28 @@ impl<U: UserFun + Debug> Debug for Fun<U> {
     }
 }
 
+/*
+// see https://github.com/rust-lang/rust/issues/26264 as to why this doesn't work :|
+pub enum VmFun<F: 'static> where F: Fn(&mut State) -> Result<()> {
+    BCUserFun(Rc<BCUserFun>),
+    ForeignFun(ForeignFun),
+    BuiltinFun(F),
+}
+
+impl<F: 'static> VmFun<F> where F: Fn(&mut State) -> Result<()> {
+    pub fn is_user_fun(&self) -> bool {
+        matches!(self, &BCFun::UserFun(_))
+    }
+
+    pub fn user_fun(&self) -> &BCUserFun {
+        if let &BCFun::UserFun(ref fun) = self {
+            fun
+        } else {
+            panic!("BCFun::user_fun() called on non-BCUserFun item")
+        }
+    }
+}
+
+pub type BCFun = VmFun<&'static BuiltinFun>;
+*/
+

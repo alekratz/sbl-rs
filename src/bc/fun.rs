@@ -1,10 +1,8 @@
 use ir::*;
 use bc::*;
-use vm::*;
 use internal::*;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::fmt::{Debug, Formatter, self};
 use syntax::*;
 
 pub type BCFunTable = HashMap<String, BCFun>;
@@ -44,6 +42,14 @@ impl BCUserFun {
     }
 }
 
+impl UserFun for BCUserFun {
+    type InstructionT = BC;
+
+    fn name(&self) -> &str { self.name.as_str() }
+    fn body(&self) -> &[Self::InstructionT] { self.body.as_slice() }
+    fn tokens(&self) -> &[Rc<Token>] { self.tokens.as_slice() }
+}
+
 impl From<IRUserFun> for BCUserFun {
     fn from(other: IRUserFun) -> Self {
         BCUserFun {
@@ -57,75 +63,14 @@ impl From<IRUserFun> for BCUserFun {
     }
 }
 
-#[derive(EnumIsA)]
-pub enum BCFun {
-    UserFun(BCUserFun),
-    ForeignFun(ForeignFun),
-    BuiltinFun(&'static BuiltinFun),
-}
-
-impl BCFun {
-    pub fn as_user_fun(&self) -> &BCUserFun {
-        if let &BCFun::UserFun(ref fun) = self {
-            fun
-        } else {
-            panic!("BCFun::as_user_fun() called on non-BCUserFun item")
-        }
-    }
-}
-
-impl Clone for BCFun {
-    fn clone(&self) -> Self {
-        match self {
-            &BCFun::UserFun(ref fun) => BCFun::UserFun(fun.clone()),
-            &BCFun::ForeignFun(ref fun) => BCFun::ForeignFun(fun.clone()),
-            &BCFun::BuiltinFun(fun) => BCFun::BuiltinFun(fun),
-        }
-    }
-}
+pub type BCFun = Fun<BCUserFun>;
 
 impl From<IRFun> for BCFun {
     fn from(other: IRFun) -> Self {
         match other {
-            Fun::UserFun(u) => BCFun::UserFun(u.into()),
-            Fun::ForeignFun(f) => BCFun::ForeignFun(f),
-            Fun::BuiltinFun(b) => BCFun::BuiltinFun(b),
+            Fun::UserFun(u) => Fun::UserFun(u.into()),
+            Fun::ForeignFun(f) => Fun::ForeignFun(f),
+            Fun::BuiltinFun(b) => Fun::BuiltinFun(b),
         }
     }
 }
-
-impl Debug for BCFun {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        write!(fmt, "{}", match self {
-            &BCFun::UserFun(ref fun) => format!("{:?}", fun),
-            &BCFun::ForeignFun(ref fun) => format!("{:?}", fun),
-            &BCFun::BuiltinFun(fun) => format!("{:?}", fun as *const _),
-        })
-    }
-}
-
-/*
-// see https://github.com/rust-lang/rust/issues/26264 as to why this doesn't work :|
-pub enum VmFun<F: 'static> where F: Fn(&mut State) -> Result<()> {
-    BCUserFun(Rc<BCUserFun>),
-    ForeignFun(ForeignFun),
-    BuiltinFun(F),
-}
-
-impl<F: 'static> VmFun<F> where F: Fn(&mut State) -> Result<()> {
-    pub fn is_user_fun(&self) -> bool {
-        matches!(self, &BCFun::UserFun(_))
-    }
-
-    pub fn user_fun(&self) -> &BCUserFun {
-        if let &BCFun::UserFun(ref fun) = self {
-            fun
-        } else {
-            panic!("BCFun::user_fun() called on non-BCUserFun item")
-        }
-    }
-}
-
-pub type BCFun = VmFun<&'static BuiltinFun>;
-*/
-

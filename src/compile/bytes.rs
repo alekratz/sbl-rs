@@ -62,7 +62,7 @@ impl OptimizeBCInline {
     /// Determines whether a given function should be inlined.
     fn should_inline(fun: &BCFun) -> bool {
         const SKIP: &[&'static str] = &["main"]; // function names to skip and not inline
-        if let &BCFun::UserFun(ref fun) = fun as &BCFun {
+        if let &Fun::UserFun(ref fun) = fun as &BCFun {
             !SKIP.contains(&fun.name.as_str()) &&
                 !fun.body.iter().any(|bc| bc.bc_type == BCType::Call)
         } else {
@@ -141,7 +141,7 @@ impl OptimizeBCInline {
             // replace the function with the new body
             self.fun_table.insert(
                 fname.clone(),
-                BCFun::UserFun(BCUserFun::new(fname, new_body, tokens)),
+                Fun::UserFun(BCUserFun::new(fname, new_body, tokens)),
             );
         }
     }

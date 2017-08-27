@@ -2,6 +2,7 @@ use syntax::*;
 use bc::*;
 use ir::*;
 use vm::*;
+use internal::*;
 use compile::*;
 use errors::*;
 
@@ -83,7 +84,7 @@ impl Compile for BakeIRFunTable {
                     Ok(f) => f,
                     Err(e) => return Err(e),
                 };
-                let userfun = BCFun::UserFun(BCUserFun::new(fname.to_string(), body, fun.tokens.clone()));
+                let userfun = Fun::UserFun(BCUserFun::new(fname.to_string(), body, fun.tokens.clone()));
                 let mut vm = self.vm.borrow_mut();
                 vm.add_fun(fname.to_string(), userfun.clone());
                 Ok(userfun)
