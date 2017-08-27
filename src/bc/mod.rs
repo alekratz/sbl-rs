@@ -5,6 +5,7 @@ pub use self::fun::*;
 pub use self::val::*;
 
 use ir::*;
+use internal::Instruction;
 use syntax::*;
 use std::fmt::{self, Formatter, Display};
 
@@ -42,6 +43,8 @@ impl Display for BCType {
         )
     }
 }
+
+impl Instruction for BC { }
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct BC {

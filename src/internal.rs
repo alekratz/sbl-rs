@@ -4,7 +4,7 @@ use std::fmt::{Debug, Formatter, self};
 use std::rc::Rc;
 
 pub trait UserFun {
-    type InstructionT;
+    type InstructionT: Instruction;
 
     fn name(&self) -> &str;
     fn body(&self) -> &[Self::InstructionT];
