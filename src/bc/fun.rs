@@ -1,9 +1,6 @@
-use ir::*;
-use bc::*;
-use internal::*;
+use prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
-use syntax::*;
 
 pub type BCFunTable = HashMap<String, BCFun>;
 pub type BCFunRcTable = HashMap<String, Rc<BCFun>>;

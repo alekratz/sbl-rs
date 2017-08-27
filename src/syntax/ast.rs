@@ -1,5 +1,4 @@
-use common::*;
-use syntax::token::*;
+use prelude::*;
 #[cfg(test)]
 use std::fmt::{self, Formatter, Debug};
 

@@ -1,7 +1,4 @@
-use syntax::*;
-use ir::*;
-use internal::*;
-use errors::*;
+use prelude::*;
 use petgraph::Graph;
 use std::collections::{HashMap, HashSet};
 

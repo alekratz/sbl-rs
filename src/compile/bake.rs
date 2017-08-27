@@ -1,11 +1,4 @@
-use syntax::*;
-use bc::*;
-use ir::*;
-use vm::*;
-use internal::*;
-use compile::*;
-use errors::*;
-
+use prelude::*;
 use petgraph::algo::toposort;
 use std::cell::RefCell;
 

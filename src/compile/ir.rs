@@ -1,9 +1,4 @@
-use ir::*;
-use vm::*;
-use syntax::*;
-use errors::*;
-use internal::*;
-use compile::Compile;
+use prelude::*;
 use std::collections::HashMap;
 
 /*

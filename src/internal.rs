@@ -1,5 +1,4 @@
-use vm::*;
-use syntax::*;
+use prelude::*;
 use std::fmt::{Debug, Formatter, self};
 use std::rc::Rc;
 

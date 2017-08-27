@@ -1,6 +1,4 @@
-use ir::*;
-use syntax::*;
-use internal::*;
+use prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 

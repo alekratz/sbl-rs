@@ -4,9 +4,7 @@ pub mod val;
 pub use self::fun::*;
 pub use self::val::*;
 
-use ir::*;
-use internal::Instruction;
-use syntax::*;
+use prelude::*;
 use std::fmt::{self, Formatter, Display};
 
 #[derive(Copy, Clone, PartialEq, Debug)]

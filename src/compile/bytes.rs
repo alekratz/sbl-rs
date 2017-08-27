@@ -1,8 +1,4 @@
-use ir::*;
-use bc::*;
-use internal::*;
-use errors::*;
-use compile::{Compile, Optimize, BakeIRFunTable, build_bake_call_graph};
+use prelude::*;
 use std::collections::HashMap;
 
 pub struct CompileBytes {

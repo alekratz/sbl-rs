@@ -1,7 +1,4 @@
-use errors::*;
-use common::*;
-use syntax::token::*;
-use syntax::ast::*;
+use prelude::*;
 
 pub struct Parser<'c> {
     tokenizer: Tokenizer<'c>,

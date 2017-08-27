@@ -39,3 +39,15 @@ pub mod errors {
         }
     }
 }
+
+pub mod prelude {
+    pub use syntax::*;
+    pub use internal::*;
+    pub use ir::*;
+    pub use bc::*;
+    pub use compile::*;
+    pub use vm::*;
+
+    pub use common::*;
+    pub use errors::*;
+}

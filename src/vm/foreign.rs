@@ -1,7 +1,4 @@
-use errors::*;
-use syntax::*;
-use vm::*;
-use bc::*;
+use prelude::*;
 use libc::{self, RTLD_NOW, c_char};
 use libffi::low::CodePtr;
 use libffi::high::call::{call, Arg};

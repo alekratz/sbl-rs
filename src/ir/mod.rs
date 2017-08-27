@@ -4,8 +4,7 @@ pub mod val;
 pub use ir::fun::*;
 pub use ir::val::*;
 
-use syntax::*;
-use internal::Instruction;
+use prelude::*;
 
 impl Instruction for IR {}
 

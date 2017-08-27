@@ -2,12 +2,7 @@
 extern crate clap;
 extern crate sbl;
 
-use sbl::common::*;
-use sbl::errors::*;
-use sbl::vm::*;
-use sbl::compile::*;
-use sbl::internal::*;
-use sbl::bc::*;
+use sbl::prelude::*;
 use std::process;
 use std::env;
 use std::path::Path;
