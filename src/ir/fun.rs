@@ -1,7 +1,6 @@
-use ir::*;
-use vm::*;
-use syntax::*;
-use std::fmt::{Debug, Formatter, self};
+use prelude::*;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 pub type IRBody = Vec<IR>;
 
@@ -42,39 +41,16 @@ impl IRUserFun {
     }
 }
 
-#[derive(EnumIntoGetters, EnumIsA)]
-pub enum IRFun {
-    UserFun(IRUserFun),
-    ForeignFun(ForeignFn),
-    BuiltinFun(&'static BuiltinFun),
+impl UserFun for IRUserFun {
+    type InstructionT = IR;
+
+    fn name(&self) -> &str { &self.name }
+    fn body(&self) -> &[Self::InstructionT] { &self.body }
+    fn tokens(&self) -> &[Rc<Token>] { &self.tokens }
 }
 
-impl IRFun {
-    pub fn as_user_fun(&self) -> &IRUserFun {
-        if let &IRFun::UserFun(ref fun) = self {
-            fun
-        } else {
-            panic!("IRFun::as_user_fun() called on non-BCUserFun item")
-        }
-    }
-}
+pub type IRFun = Fun<IRUserFun>;
 
-impl Clone for IRFun {
-    fn clone(&self) -> Self {
-        match self {
-            &IRFun::UserFun(ref fun) => IRFun::UserFun(fun.clone()),
-            &IRFun::ForeignFun(ref fun) => IRFun::ForeignFun(fun.clone()),
-            &IRFun::BuiltinFun(fun) => IRFun::BuiltinFun(fun),
-        }
-    }
-}
+impl IRFun { }
 
-impl Debug for IRFun {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        write!(fmt, "{}", match self {
-            &IRFun::UserFun(ref fun) => format!("{:?}", fun),
-            &IRFun::ForeignFun(ref fun) => format!("{:?}", fun),
-            &IRFun::BuiltinFun(fun) => format!("{:?}", fun as *const _),
-        })
-    }
-}
+pub type IRFunTable = HashMap<String, IRFun>;

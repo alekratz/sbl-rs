@@ -1,7 +1,4 @@
-use errors::*;
-use common::*;
-use syntax::token::*;
-use syntax::ast::*;
+use prelude::*;
 
 pub struct Parser<'c> {
     tokenizer: Tokenizer<'c>,
@@ -179,7 +176,7 @@ impl<'c> Parser<'c> {
         Ok(Foreign::new(tokens, funs))
     }
 
-    fn expect_foreign_fun(&mut self, lib: &str) -> Result<ForeignFn> {
+    fn expect_foreign_fun(&mut self, lib: &str) -> Result<ForeignFun> {
         fn type_map(name: &str) -> Result<ItemType> {
             match name {
                 "int" => Ok(ItemType::Int(0)),
@@ -210,7 +207,7 @@ impl<'c> Parser<'c> {
             tokens.push(param_token.into_rc());
         }
         tokens.push(self.match_token(TokenType::RBrack)?.into_rc());
-        Ok(ForeignFn::new(
+        Ok(ForeignFun::new(
             tokens,
             name,
             lib.to_string(),
@@ -402,7 +399,7 @@ mod test {
     macro_rules! foreign_fn {
         ($path:expr ; $type:ident $name:ident [ $($params:ident)* ] $($tail:tt)*) => {{
             let mut v = vec![
-                ForeignFn::new(vec![], stringify!($name).to_string(), $path.to_string(), vec![$(param!($params)),*], param!($type))
+                ForeignFun::new(vec![], stringify!($name).to_string(), $path.to_string(), vec![$(param!($params)),*], param!($type))
             ];
             v.append(&mut foreign_fn!($path ; $($tail)*));
             v

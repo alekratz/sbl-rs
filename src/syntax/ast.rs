@@ -1,5 +1,4 @@
-use common::*;
-use syntax::token::*;
+use prelude::*;
 #[cfg(test)]
 use std::fmt::{self, Formatter, Debug};
 
@@ -608,7 +607,7 @@ impl Debug for Import {
 
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
-pub struct ForeignFn {
+pub struct ForeignFun {
     pub tokens: Tokens,
     /// Name of the foreign function to call.
     pub name: String,
@@ -620,7 +619,7 @@ pub struct ForeignFn {
     pub return_type: ItemType,
 }
 
-impl ForeignFn {
+impl ForeignFun {
     pub fn new(
         tokens: Tokens,
         name: String,
@@ -628,7 +627,7 @@ impl ForeignFn {
         params: Vec<ItemType>,
         return_type: ItemType,
     ) -> Self {
-        ForeignFn {
+        ForeignFun {
             tokens,
             name,
             lib,
@@ -638,7 +637,7 @@ impl ForeignFn {
     }
 }
 
-impl ASTNode for ForeignFn {
+impl ASTNode for ForeignFun {
     fn tokens(&self) -> &[RcToken] {
         &self.tokens
     }
@@ -649,11 +648,11 @@ impl ASTNode for ForeignFn {
 }
 
 #[cfg(test)]
-impl Debug for ForeignFn {
+impl Debug for ForeignFun {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "ForeignFn {{ name: {} lib: {} params: {:?} return_type: {:?} }}",
+            "ForeignFun {{ name: {} lib: {} params: {:?} return_type: {:?} }}",
             self.name,
             self.lib,
             self.params,
@@ -663,7 +662,7 @@ impl Debug for ForeignFn {
 }
 
 #[cfg(test)]
-impl PartialEq for ForeignFn {
+impl PartialEq for ForeignFun {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.lib == other.lib && self.params == other.params &&
             self.return_type == other.return_type
@@ -674,11 +673,11 @@ impl PartialEq for ForeignFn {
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Foreign {
     pub tokens: Tokens,
-    pub functions: Vec<ForeignFn>,
+    pub functions: Vec<ForeignFun>,
 }
 
 impl Foreign {
-    pub fn new(tokens: Tokens, functions: Vec<ForeignFn>) -> Self {
+    pub fn new(tokens: Tokens, functions: Vec<ForeignFun>) -> Self {
         Foreign { tokens, functions }
     }
 }

@@ -4,7 +4,9 @@ pub mod val;
 pub use ir::fun::*;
 pub use ir::val::*;
 
-use syntax::*;
+use prelude::*;
+
+impl Instruction for IR {}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct IR {

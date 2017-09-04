@@ -1,5 +1,4 @@
-use errors::*;
-use syntax::{AST, Tokenizer, Parser};
+use prelude::*;
 use error_chain::ChainedError;
 use std::sync::Arc;
 use std::fmt::{self, Formatter, Debug, Display};

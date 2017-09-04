@@ -1,5 +1,4 @@
-use errors::*;
-use vm::*;
+use prelude::*;
 use std::collections::HashMap;
 use std::cmp::Ordering;
 

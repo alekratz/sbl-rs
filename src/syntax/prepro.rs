@@ -1,6 +1,4 @@
-use errors::*;
-use common::*;
-use syntax::*;
+use prelude::*;
 use std::path::{Path, PathBuf};
 
 impl Import {

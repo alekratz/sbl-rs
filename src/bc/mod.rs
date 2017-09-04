@@ -1,6 +1,10 @@
-use ir::*;
-use vm::*;
-use syntax::*;
+pub mod fun;
+pub mod val;
+
+pub use self::fun::*;
+pub use self::val::*;
+
+use prelude::*;
 use std::fmt::{self, Formatter, Display};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -37,6 +41,8 @@ impl Display for BCType {
         )
     }
 }
+
+impl Instruction for BC { }
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct BC {

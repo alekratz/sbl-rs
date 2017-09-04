@@ -2,11 +2,7 @@
 extern crate clap;
 extern crate sbl;
 
-use sbl::common::*;
-use sbl::errors::*;
-use sbl::vm::*;
-use sbl::compile::*;
-use sbl::internal::*;
+use sbl::prelude::*;
 use std::process;
 use std::env;
 use std::path::Path;
@@ -34,7 +30,7 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
     };
     if dump {
         for f in fun_table.iter().filter_map(
-            |(_, f)| if let &BCFun::UserFun(ref f) =
+            |(_, f)| if let &Fun::UserFun(ref f) =
                 f as &BCFun
             {
                 Some(f)

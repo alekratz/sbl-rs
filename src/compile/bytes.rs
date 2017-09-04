@@ -1,8 +1,4 @@
-use ir::*;
-use vm::*;
-use errors::*;
-use internal::*;
-use compile::{Compile, Optimize, BakeIRFunTable, build_bake_call_graph};
+use prelude::*;
 use std::collections::HashMap;
 
 pub struct CompileBytes {
@@ -21,7 +17,7 @@ impl Compile for CompileBytes {
         let bake_graph = build_bake_call_graph(&self.fun_table)?;
         let (bc_funs, bake_funs): (IRFunTable, IRFunTable) = self.fun_table
             .into_iter()
-            .partition(|&(_, ref v)| if let &IRFun::UserFun(ref fun) = v {
+            .partition(|&(_, ref v)| if let &Fun::UserFun(ref fun) = v {
                 !fun.contains_bake
             } else {
                 true
@@ -62,7 +58,7 @@ impl OptimizeBCInline {
     /// Determines whether a given function should be inlined.
     fn should_inline(fun: &BCFun) -> bool {
         const SKIP: &[&'static str] = &["main"]; // function names to skip and not inline
-        if let &BCFun::UserFun(ref fun) = fun as &BCFun {
+        if let &Fun::UserFun(ref fun) = fun as &BCFun {
             !SKIP.contains(&fun.name.as_str()) &&
                 !fun.body.iter().any(|bc| bc.bc_type == BCType::Call)
         } else {
@@ -141,7 +137,7 @@ impl OptimizeBCInline {
             // replace the function with the new body
             self.fun_table.insert(
                 fname.clone(),
-                BCFun::UserFun(BCUserFun::new(fname, new_body, tokens)),
+                Fun::UserFun(BCUserFun::new(fname, new_body, tokens)),
             );
         }
     }

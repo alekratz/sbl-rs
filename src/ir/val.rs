@@ -1,7 +1,4 @@
-use ir::*;
-use vm::*;
-use syntax::*;
-use errors::*;
+use prelude::*;
 use std::cmp::Ordering;
 use std::fmt::{self, Formatter, Display};
 

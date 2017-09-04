@@ -1,16 +1,5 @@
-use syntax::*;
-use ir::*;
-use vm::*;
-use compile::*;
-use errors::*;
-use internal::*;
-
-use itertools::Itertools;
-use petgraph::Direction;
-use petgraph::algo::{is_cyclic_directed, toposort};
-use petgraph::visit::Bfs;
-use std::collections::HashMap;
-use std::rc::Rc;
+use prelude::*;
+use petgraph::algo::toposort;
 use std::cell::RefCell;
 
 pub struct BakeIRFunTable {
@@ -88,7 +77,7 @@ impl Compile for BakeIRFunTable {
                     Ok(f) => f,
                     Err(e) => return Err(e),
                 };
-                let userfun = BCFun::UserFun(BCUserFun::new(fname.to_string(), body, fun.tokens.clone()));
+                let userfun = Fun::UserFun(BCUserFun::new(fname.to_string(), body, fun.tokens.clone()));
                 let mut vm = self.vm.borrow_mut();
                 vm.add_fun(fname.to_string(), userfun.clone());
                 Ok(userfun)

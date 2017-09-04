@@ -1,7 +1,4 @@
-use syntax::*;
-use ir::*;
-use internal::*;
-use errors::*;
+use prelude::*;
 use petgraph::Graph;
 use std::collections::{HashMap, HashSet};
 
@@ -19,7 +16,7 @@ pub fn build_call_graph(fun_table: &IRFunTable) -> CallGraph {
     // hook up function calls
     for (fname, node) in &node_table {
         let fun = fun_table.get(fname).unwrap();
-        if let &IRFun::UserFun(ref fun) = fun {
+        if let &Fun::UserFun(ref fun) = fun {
             for ir in &fun.body {
                 if ir.ir_type == IRType::Call {
                     // find the node and hook it up
@@ -38,7 +35,7 @@ pub fn build_call_graph(fun_table: &IRFunTable) -> CallGraph {
 
 pub fn build_bake_call_graph(fun_table: &IRFunTable) -> Result<CallGraph> {
     /// Utility function that recursively grabs all function calls from a bake statement.
-    fn get_all_bake_calls<'a>(body: &'a [IR], fun_table: &'a IRFunTable, funs: &mut HashSet<&'a str>) -> Result<()> {
+    fn get_all_bake_calls<'a>(body: &'a [IR], fun_table: &'a IRFunTable, baked_funs: &mut HashSet<&'a str>, called_funs: &mut HashSet<&'a str>) -> Result<()> {
         for ref ir in body {
 
             match &ir.ir_type {
@@ -47,16 +44,21 @@ pub fn build_bake_call_graph(fun_table: &IRFunTable) -> Result<CallGraph> {
                         .as_ref()
                         .unwrap()
                         .as_ident();
-                    if funs.contains(name.as_str()) {
+                    if baked_funs.contains(name.as_str()) {
                         return Err(format!("which calls `{}`", name).into());
                     }
                     let user_fun = fun_table.get(name);
-                    if user_fun.map(IRFun::is_user_fun).unwrap_or(false) {
+                    if user_fun.map(Fun::is_user_fun).unwrap_or(false) {
                         let user_fun = user_fun.unwrap()
                             .as_user_fun();
-                        funs.insert(name.as_str());
-                        get_all_bake_calls(&user_fun.body, fun_table, funs)
-                            .chain_err(|| format!("which calls `{}` (in {})", name, user_fun.tokens.range()))?;
+                        if user_fun.contains_bake {
+                            baked_funs.insert(name.as_str());
+                        }
+                        if !called_funs.contains(name.as_str()) {
+                            called_funs.insert(name.as_str());
+                            get_all_bake_calls(&user_fun.body, fun_table, baked_funs, called_funs)
+                                .chain_err(|| format!("which calls `{}` (in {})", name, user_fun.tokens.range()))?;
+                        }
                     }
                 }
                 &IRType::Bake => {
@@ -64,7 +66,7 @@ pub fn build_bake_call_graph(fun_table: &IRFunTable) -> Result<CallGraph> {
                         .as_ref()
                         .unwrap()
                         .as_bake_block();
-                    get_all_bake_calls(bake_body, fun_table, funs)?;
+                    get_all_bake_calls(bake_body, fun_table, baked_funs, called_funs)?;
                 }
                 _ => { }
             }
@@ -86,17 +88,18 @@ pub fn build_bake_call_graph(fun_table: &IRFunTable) -> Result<CallGraph> {
     // hook up function calls
     for (fname, node) in &node_table {
         let fun = fun_table.get(fname).unwrap();
-        if let &IRFun::UserFun(ref fun) = fun {
+        if let &Fun::UserFun(ref fun) = fun {
             for ir in &fun.body {
                 if ir.ir_type == IRType::Bake {
                     let body = ir.val
                         .as_ref()
                         .unwrap()
                         .as_bake_block();
-                    let mut funcalls = hashset!(fun.name.as_str());
-                    get_all_bake_calls(&body, fun_table, &mut funcalls)
+                    let mut baked_funs: HashSet<&str> = hashset!();
+                    let mut called_funs = hashset!(fun.name.as_str());
+                    get_all_bake_calls(&body, fun_table, &mut baked_funs, &mut called_funs)
                         .chain_err(|| format!("cycle detected in `{}` (in {})", fun.name, fun.tokens.range()))?;
-                    for fname in funcalls {
+                    for fname in baked_funs {
                         if let Some(callee) = node_table.get(fname) {
                             fun_graph.add_edge(*node, *callee, ());
                         }
