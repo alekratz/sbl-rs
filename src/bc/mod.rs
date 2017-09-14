@@ -11,7 +11,6 @@ use std::fmt::{self, Formatter, Display};
 pub enum BCType {
     Push,
     PushL,
-    PushA,
     Pop,
     PopN,
     Load,
@@ -28,7 +27,6 @@ impl Display for BCType {
             "{}",
             match self {
                 &BCType::Push => "PUSH",
-                &BCType::PushA => "PUSHA",
                 &BCType::PushL => "PUSHL",
                 &BCType::Pop => "POP",
                 &BCType::PopN => "POPN",
@@ -53,14 +51,6 @@ pub struct BC {
 
 impl BC {
     pub fn push(tokens: Tokens, val: BCVal) -> BC {
-        BC {
-            bc_type: BCType::Push,
-            tokens,
-            val: Some(val),
-        }
-    }
-
-    pub fn pusha(tokens: Tokens, val: BCVal) -> BC {
         assert_matches!(val, BCVal::Stack(_));
         BC {
             bc_type: BCType::Push,
@@ -144,7 +134,12 @@ pub type BCBody = Vec<BC>;
 impl From<IR> for BC {
     fn from(other: IR) -> Self {
         let new_type = match other.ir_type {
-            IRType::Push => BCType::Push,
+            IRType::Push => return BC {
+                bc_type: BCType::Push,
+                val: Some(BCVal::Stack(vec![other.val.map(BCVal::from)
+                                       .expect("BCType::Push expects a value")])),
+                tokens: other.tokens,
+            },
             IRType::PushL => BCType::PushL,
             IRType::Pop => BCType::Pop,
             IRType::PopN => BCType::PopN,

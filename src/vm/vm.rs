@@ -265,11 +265,6 @@ impl VM {
                 match bc_type {
                     BCType::Push => {
                         let mut state = self.state.borrow_mut();
-                        state.push(val.unwrap());
-                        state.increment_pc();
-                    }
-                    BCType::PushA => {
-                        let mut state = self.state.borrow_mut();
                         state.push_all(val.unwrap().as_stack());
                         state.increment_pc();
                     }

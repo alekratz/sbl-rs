@@ -142,3 +142,16 @@ impl OptimizeBCInline {
         }
     }
 }
+
+pub struct OptimizeBCPushCompress {
+    fun_table: BCFunTable,
+}
+
+impl Optimize for OptimizeBCPushCompress {
+    type Out = BCFunTable;
+
+    fn optimize(mut self) -> Self::Out {
+        unimplemented!("TODO : add OptimizeBCPushCompress::optimize");
+    }
+}
+
