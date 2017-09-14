@@ -1,4 +1,5 @@
 use prelude::*;
+//use itertools::Itertools;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -36,6 +37,33 @@ impl BCUserFun {
             );
             addr += 1;
         }
+    }
+
+    /// Compresses all adjacent push statements to one statement.
+    pub fn compress_pushes(&mut self) {
+        let body = self.body
+            .clone()
+            .into_iter();
+        let mut last_was_push = false;
+        self.body = body.fold(vec![], |mut body, instr| {
+            if instr.bc_type == BCType::Push {
+                if last_was_push {
+                    let mut last_part = body.last_mut()
+                        .unwrap();
+                    last_part.val
+                        .as_mut()
+                        .unwrap()
+                        .append(&mut instr.val.unwrap());
+                } else {
+                    body.push(instr);
+                    last_was_push = true;
+                }
+            } else {
+                body.push(instr);
+                last_was_push = false;
+            }
+            body
+        });
     }
 }
 

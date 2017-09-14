@@ -147,11 +147,25 @@ pub struct OptimizeBCPushCompress {
     fun_table: BCFunTable,
 }
 
+impl OptimizeBCPushCompress {
+    pub fn new(fun_table: BCFunTable) -> Self {
+        OptimizeBCPushCompress { fun_table }
+    }
+}
+
 impl Optimize for OptimizeBCPushCompress {
     type Out = BCFunTable;
 
-    fn optimize(mut self) -> Self::Out {
-        unimplemented!("TODO : add OptimizeBCPushCompress::optimize");
+    fn optimize(self) -> Self::Out {
+        self.fun_table
+            .into_iter()
+            .map(|(name, mut fun)| {
+                if let Fun::UserFun(ref mut fun) = fun {
+                    fun.compress_pushes();
+                }
+                (name, fun)
+            })
+            .collect()
     }
 }
 

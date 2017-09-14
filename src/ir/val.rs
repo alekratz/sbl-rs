@@ -98,6 +98,7 @@ impl From<BCVal> for IRVal {
             BCVal::String(s) => IRVal::String(s),
             BCVal::Bool(b) => IRVal::Bool(b),
             BCVal::Stack(s) => IRVal::Stack(s.into_iter().map(BCVal::into).collect()),
+            BCVal::PushAll(_) => panic!("BCVal::PushAll values cannot be converted to an IRVal"),
             BCVal::Nil => IRVal::Nil,
         }
     }
@@ -122,40 +123,4 @@ impl<'a> From<&'a Item> for IRVal {
         other.clone().into()
     }
 }
-
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum IRType {
-    Push,
-    PushL,
-    Pop,
-    PopN,
-    Load,
-    JmpZ,
-    Jmp,
-    Call,
-    Ret,
-    Bake,
-}
-
-impl Display for IRType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                &IRType::Push => "PUSH",
-                &IRType::PushL => "PUSHL",
-                &IRType::Pop => "POP",
-                &IRType::PopN => "POPN",
-                &IRType::Load => "LOAD",
-                &IRType::JmpZ => "JMPZ",
-                &IRType::Jmp => "JMP",
-                &IRType::Call => "CALL",
-                &IRType::Ret => "RET",
-                &IRType::Bake => "BAKE",
-            }
-        )
-    }
-}
-
 

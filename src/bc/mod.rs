@@ -18,6 +18,7 @@ pub enum BCType {
     Jmp,
     Call,
     Ret,
+    Label,
 }
 
 impl Display for BCType {
@@ -35,6 +36,7 @@ impl Display for BCType {
                 &BCType::Jmp => "JMP",
                 &BCType::Call => "CALL",
                 &BCType::Ret => "RET",
+                &BCType::Label => "LABEL",
             }
         )
     }
@@ -51,7 +53,7 @@ pub struct BC {
 
 impl BC {
     pub fn push(tokens: Tokens, val: BCVal) -> BC {
-        assert_matches!(val, BCVal::Stack(_));
+        assert_matches!(val, BCVal::PushAll(_));
         BC {
             bc_type: BCType::Push,
             tokens,
@@ -127,6 +129,15 @@ impl BC {
             val: None,
         }
     }
+
+    pub fn label(tokens: Tokens, val: BCVal) -> BC {
+        assert_matches!(val, BCVal::Int(_));
+        BC {
+            bc_type: BCType::Label,
+            tokens,
+            val: Some(val),
+        }
+    }
 }
 
 pub type BCBody = Vec<BC>;
@@ -136,7 +147,7 @@ impl From<IR> for BC {
         let new_type = match other.ir_type {
             IRType::Push => return BC {
                 bc_type: BCType::Push,
-                val: Some(BCVal::Stack(vec![other.val.map(BCVal::from)
+                val: Some(BCVal::PushAll(vec![other.val.map(BCVal::from)
                                        .expect("BCType::Push expects a value")])),
                 tokens: other.tokens,
             },
@@ -149,6 +160,7 @@ impl From<IR> for BC {
             IRType::Call => BCType::Call,
             IRType::Ret => BCType::Ret,
             IRType::Bake => panic!("IRType::Bake instructions cannot be converted to any BCType instruction"),
+            IRType::Label => BCType::Label,
         };
         BC {
             bc_type: new_type,

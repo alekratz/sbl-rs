@@ -27,12 +27,14 @@ test-numbers {
     @
     1 2 3 4 5
     loop {
+        ^print " factorial is " !print
         fact !println
     }
 
     1 2 3 4 5
     loop {
-        square "square is " !print !println
+        ^print " squared is " !print
+        square !println
     }
     
      -1 -2 -3 -4 -5

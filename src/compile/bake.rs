@@ -33,7 +33,7 @@ impl BakeIRFunTable {
                     .into();
                 Ok(state.stack
                     .into_iter()
-                    .map(|v| BC::push(tokens.clone(), BCVal::Stack(vec![v])))
+                    .map(|v| BC::push(tokens.clone(), BCVal::PushAll(vec![v])))
                     .collect())
             } else {
                 Ok(vec![ir.into()])

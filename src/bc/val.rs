@@ -10,6 +10,7 @@ pub enum BCVal {
     String(String),
     Bool(bool),
     Stack(Vec<BCVal>),
+    PushAll(Vec<BCVal>),
     Nil,
 }
 
@@ -22,6 +23,7 @@ impl BCVal {
             &BCVal::String(_) => other.is_string(),
             &BCVal::Bool(_) => other.is_bool(),
             &BCVal::Stack(_) => other.is_stack(),
+            &BCVal::PushAll(_) => other.is_push_all(),
             &BCVal::Nil => other.is_nil(),
         }
     }
@@ -34,6 +36,7 @@ impl BCVal {
             &BCVal::String(_) => "string",
             &BCVal::Bool(_) => "bool",
             &BCVal::Stack(_) => "local stack",
+            &BCVal::PushAll(_) => "push collection",
             &BCVal::Nil => "nil",
         }
     }
@@ -50,15 +53,27 @@ impl BCVal {
         }
 
         match self {
-            &BCVal::Int(i) => Ok(other.as_int().cmp(&i)),
-            &BCVal::Ident(_) | &BCVal::String(_) | &BCVal::Bool(_) | &BCVal::Stack(_) | &BCVal::Nil => Err(
+            &BCVal::Int(i) => Ok(other.as_int().cmp(&i)), 
+            &BCVal::Char(c) => Ok(other.as_char().cmp(&c)),
+            _ => Err(
                 format!(
                     "{} types may not be compared with ordinal operators",
                     self.type_string()
                 ).into(),
             ),
-            &BCVal::Char(c) => Ok(other.as_char().cmp(&c)),
         }
+    }
+
+    /// Appends the contents of one stack value to another.
+    pub fn append(&mut self, other: &mut BCVal) {
+        assert!(self.is_push_all() && other.is_push_all());
+        if let &mut BCVal::PushAll(ref mut mine) = self {
+            if let &mut BCVal::PushAll(ref mut theirs) = other {
+                mine.append(theirs);
+            }
+            else { unreachable!() }
+        }
+        else { unreachable!() }
     }
 }
 
@@ -70,7 +85,7 @@ impl Display for BCVal {
             &BCVal::Char(c) => write!(f, "{}", c),
             &BCVal::String(ref s) => write!(f, "{}", s),
             &BCVal::Bool(b) => write!(f, "{}", b),
-            &BCVal::Stack(ref v) => {
+            &BCVal::Stack(ref v) | &BCVal::PushAll(ref v) => {
                 write!(
                     f,
                     "[{}]",

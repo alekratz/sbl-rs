@@ -5,6 +5,46 @@ pub use ir::fun::*;
 pub use ir::val::*;
 
 use prelude::*;
+use std::fmt::{self, Formatter, Display};
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum IRType {
+    Push,
+    PushL,
+    Pop,
+    PopN,
+    Load,
+    JmpZ,
+    Jmp,
+    Call,
+    Ret,
+    Bake,
+    Label,
+}
+
+impl Display for IRType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                &IRType::Push => "PUSH",
+                &IRType::PushL => "PUSHL",
+                &IRType::Pop => "POP",
+                &IRType::PopN => "POPN",
+                &IRType::Load => "LOAD",
+                &IRType::JmpZ => "JMPZ",
+                &IRType::Jmp => "JMP",
+                &IRType::Call => "CALL",
+                &IRType::Ret => "RET",
+                &IRType::Bake => "BAKE",
+                &IRType::Label => "LABEL",
+            }
+        )
+    }
+}
+
+
 
 impl Instruction for IR {}
 
@@ -101,6 +141,14 @@ impl IR {
             val: Some(val),
         }
     }
+    
+    pub fn label(tokens: Tokens, val: IRVal) -> IR {
+        assert_matches!(val, IRVal::Int(_));
+        IR {
+            ir_type: IRType::Label,
+            tokens,
+            val: Some(val),
+        }
+    }
 }
-
 

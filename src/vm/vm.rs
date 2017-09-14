@@ -265,7 +265,7 @@ impl VM {
                 match bc_type {
                     BCType::Push => {
                         let mut state = self.state.borrow_mut();
-                        state.push_all(val.unwrap().as_stack());
+                        state.push_all(val.unwrap().as_push_all());
                         state.increment_pc();
                     }
                     BCType::PushL => {
@@ -337,6 +337,7 @@ impl VM {
                         state.increment_pc();
                     }
                     BCType::Ret => break,
+                    BCType::Label => { /* pass-through */ },
                 }
             }
         }
