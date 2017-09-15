@@ -11,7 +11,7 @@ pub enum BCVal {
     Bool(bool),
     Stack(Vec<BCVal>),
     PushAll(Vec<BCVal>),
-    // TODO(labels) address BCVal
+    Address(usize),
     Nil,
 }
 
@@ -25,6 +25,7 @@ impl BCVal {
             &BCVal::Bool(_) => other.is_bool(),
             &BCVal::Stack(_) => other.is_stack(),
             &BCVal::PushAll(_) => other.is_push_all(),
+            &BCVal::Address(_) => other.is_address(),
             &BCVal::Nil => other.is_nil(),
         }
     }
@@ -38,6 +39,7 @@ impl BCVal {
             &BCVal::Bool(_) => "bool",
             &BCVal::Stack(_) => "local stack",
             &BCVal::PushAll(_) => "push collection",
+            &BCVal::Address(_) => "address",
             &BCVal::Nil => "nil",
         }
     }
@@ -56,6 +58,7 @@ impl BCVal {
         match self {
             &BCVal::Int(i) => Ok(other.as_int().cmp(&i)), 
             &BCVal::Char(c) => Ok(other.as_char().cmp(&c)),
+            &BCVal::Address(a) => Ok(other.as_address().cmp(&a)),
             _ => Err(
                 format!(
                     "{} types may not be compared with ordinal operators",
@@ -93,6 +96,7 @@ impl Display for BCVal {
                     v.iter().map(BCVal::to_string).collect::<Vec<_>>().join(",")
                 )
             }
+            &BCVal::Address(a) => write!(f, "0x{:X}", a),
             &BCVal::Nil => write!(f, "nil"),
         }
     }
@@ -107,6 +111,7 @@ impl From<IRVal> for BCVal {
             IRVal::String(s) => BCVal::String(s),
             IRVal::Bool(b) => BCVal::Bool(b),
             IRVal::Stack(s) => BCVal::Stack(s.into_iter().map(IRVal::into).collect()),
+            IRVal::Address(a) => BCVal::Address(a),
             IRVal::Nil => BCVal::Nil,
             IRVal::BakeBlock(_) => panic!("IRVal::BakeBlock variants may not be converted to BCVals"),
         }

@@ -100,8 +100,7 @@ impl BC {
     }
 
     pub fn jmp(tokens: Tokens, val: BCVal) -> BC {
-        // TODO(labels) address BCVal
-        assert_matches!(val, BCVal::Int(_));
+        assert_matches!(val, BCVal::Address(_));
         BC {
             bc_type: BCType::Jmp,
             tokens,
@@ -110,8 +109,7 @@ impl BC {
     }
 
     pub fn jmpz(tokens: Tokens, val: BCVal) -> BC {
-        // TODO(labels) address BCVal
-        assert_matches!(val, BCVal::Int(_));
+        assert_matches!(val, BCVal::Address(_));
         BC {
             bc_type: BCType::JmpZ,
             tokens,
@@ -120,7 +118,6 @@ impl BC {
     }
 
     pub fn symjmp(tokens: Tokens, val: BCVal) -> BC {
-        // TODO(labels) address BCVal
         assert_matches!(val, BCVal::Int(_));
         BC {
             bc_type: BCType::SymJmp,
@@ -130,7 +127,6 @@ impl BC {
     }
 
     pub fn symjmpz(tokens: Tokens, val: BCVal) -> BC {
-        // TODO(labels) address BCVal
         assert_matches!(val, BCVal::Int(_));
         BC {
             bc_type: BCType::SymJmpZ,

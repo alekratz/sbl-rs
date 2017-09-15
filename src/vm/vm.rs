@@ -281,7 +281,6 @@ impl VM {
                         state.push(stack);
                         state.increment_pc();
                     }
-                    // TODO : PushA
                     BCType::Pop => {
                         let mut state = self.state.borrow_mut();
                         let tos = state.pop()?;
@@ -309,7 +308,7 @@ impl VM {
                     }
                     BCType::Jmp => {
                         let mut state = self.state.borrow_mut();
-                        let addr = *val.unwrap().as_int() as usize;
+                        let addr = *val.unwrap().as_address();
                         state.set_pc(addr);
                     }
                     BCType::JmpZ => {
@@ -323,7 +322,7 @@ impl VM {
                             }
                         };
                         if jump_taken {
-                            let addr = *val.unwrap().as_int() as usize;
+                            let addr = *val.unwrap().as_address();
                             state.set_pc(addr);
                         } else {
                             state.increment_pc();
@@ -332,7 +331,6 @@ impl VM {
                     BCType::SymJmp => {
                         let mut state = self.state.borrow_mut();
                         let symbol = *val.unwrap().as_int();
-                        // TODO(labels) label table
                         let addr = fun.get_label_address(symbol);
                         state.set_pc(addr);
                     }
@@ -347,7 +345,6 @@ impl VM {
                             }
                         };
                         if jump_taken {
-                            // TODO(labels) label table
                             let symbol = *val.unwrap().as_int();
                             let addr = fun.get_label_address(symbol);
                             state.set_pc(addr);

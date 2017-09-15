@@ -293,6 +293,10 @@ fn println_c(state: &mut State) -> Result<()> {
     Ok(())
 }
 
+/*
+ * Debugging functions
+ */
+
 fn dump_stack(state: &mut State) -> Result<()> {
     eprintln!("- dumping global stack -------------------------------------------------");
     let mut c = 0;

@@ -10,6 +10,7 @@ pub enum IRVal {
     String(String),
     Bool(bool),
     Stack(Vec<IRVal>),
+    Address(usize),
     Nil,
     BakeBlock(IRBody),
 }
@@ -23,6 +24,7 @@ impl IRVal {
             &IRVal::String(_) => other.is_string(),
             &IRVal::Bool(_) => other.is_bool(),
             &IRVal::Stack(_) => other.is_stack(),
+            &IRVal::Address(_) => other.is_address(),
             &IRVal::Nil => other.is_nil(),
             &IRVal::BakeBlock(_) => other.is_bake_block(),
         }
@@ -36,6 +38,7 @@ impl IRVal {
             &IRVal::String(_) => "string",
             &IRVal::Bool(_) => "bool",
             &IRVal::Stack(_) => "local stack",
+            &IRVal::Address(_) => "address",
             &IRVal::Nil => "nil",
             &IRVal::BakeBlock(_) => "bake block",
         }
@@ -54,6 +57,7 @@ impl IRVal {
 
         match self {
             &IRVal::Int(i) => Ok(other.as_int().cmp(&i)),
+            &IRVal::Address(a) => Ok(other.as_address().cmp(&a)),
             &IRVal::Ident(_) | &IRVal::String(_) | &IRVal::Bool(_) | &IRVal::Stack(_) | &IRVal::Nil => Err(
                 format!(
                     "{} types may not be compared with ordinal operators",
@@ -83,6 +87,7 @@ impl Display for IRVal {
                     v.iter().map(IRVal::to_string).collect::<Vec<_>>().join(",")
                 )
             }
+            &IRVal::Address(a) => write!(f, "0x{:X}", a),
             &IRVal::Nil => write!(f, "nil"),
             &IRVal::BakeBlock(ref b) => write!(f, "bake block {{ {:#?} }}", b),
         }
@@ -98,6 +103,7 @@ impl From<BCVal> for IRVal {
             BCVal::String(s) => IRVal::String(s),
             BCVal::Bool(b) => IRVal::Bool(b),
             BCVal::Stack(s) => IRVal::Stack(s.into_iter().map(BCVal::into).collect()),
+            BCVal::Address(a) => IRVal::Address(a),
             BCVal::PushAll(_) => panic!("BCVal::PushAll values cannot be converted to an IRVal"),
             BCVal::Nil => IRVal::Nil,
         }
