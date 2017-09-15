@@ -254,11 +254,11 @@ impl VM {
 
     fn invoke_user_fun(&mut self) -> Result<()> {
         loop {
-            let (bc_type, val) = {
+            let (bc_type, val, fun) = {
                 let state = self.state.borrow();
                 let fun = state.current_fun();
                 let ref bc = fun.fun.body[fun.pc];
-                (bc.bc_type, bc.val.clone())
+                (bc.bc_type, bc.val.clone(), fun.fun.clone())
             };
 
             {
@@ -307,6 +307,11 @@ impl VM {
                         state.push(val);
                         state.increment_pc();
                     }
+                    BCType::Jmp => {
+                        let mut state = self.state.borrow_mut();
+                        let addr = *val.unwrap().as_int() as usize;
+                        state.set_pc(addr);
+                    }
                     BCType::JmpZ => {
                         let mut state = self.state.borrow_mut();
                         let jump_taken = {
@@ -324,10 +329,31 @@ impl VM {
                             state.increment_pc();
                         }
                     }
-                    BCType::Jmp => {
+                    BCType::SymJmp => {
                         let mut state = self.state.borrow_mut();
-                        let addr = *val.unwrap().as_int() as usize;
+                        let symbol = *val.unwrap().as_int();
+                        // TODO(labels) label table
+                        let addr = fun.get_label_address(symbol);
                         state.set_pc(addr);
+                    }
+                    BCType::SymJmpZ => {
+                        let mut state = self.state.borrow_mut();
+                        let jump_taken = {
+                            let tos = state.peek()?;
+                            match tos {
+                                &BCVal::Bool(false) |
+                                &BCVal::Nil => true,
+                                _ => false,
+                            }
+                        };
+                        if jump_taken {
+                            // TODO(labels) label table
+                            let symbol = *val.unwrap().as_int();
+                            let addr = fun.get_label_address(symbol);
+                            state.set_pc(addr);
+                        } else {
+                            state.increment_pc();
+                        }
                     }
                     BCType::Call => {
                         let val = val.unwrap();
@@ -337,7 +363,10 @@ impl VM {
                         state.increment_pc();
                     }
                     BCType::Ret => break,
-                    BCType::Label => { /* labels are not executable */ },
+                    BCType::Label => {
+                        let mut state = self.state.borrow_mut();
+                        state.increment_pc();
+                    },
                 }
             }
         }

@@ -22,11 +22,19 @@ impl BCUserFun {
         }
     }
 
+    /// Finds the address of the given label.
+    pub fn get_label_address(&self, which: i64) -> usize {
+        self.body
+            .iter()
+            .position(|bc| bc.bc_type == BCType::Label && *bc.val.as_ref().unwrap().as_int() == which)
+            .expect(&format!("unknown label used: {}", which))
+    }
+
     pub fn dump(&self) {
         let mut addr = 0;
         for bc in &self.body {
             eprintln!(
-                "{:06} {:6} {}",
+                "{:06} {:8} {}",
                 addr,
                 &bc.bc_type.to_string(),
                 if let Some(ref payload) = bc.val {

@@ -9,16 +9,18 @@ use std::fmt::{self, Formatter, Display};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum BCType {
-    Push,
-    PushL,
-    Pop,
-    PopN,
-    Load,
-    JmpZ,
-    Jmp,
-    Call,
-    Ret,
-    Label,
+    Push,           // push
+    PushL,          // push list
+    Pop,            // pop
+    PopN,           // pop N items
+    Load,           // load variable
+    Jmp,            // jump unconditionally
+    JmpZ,           // jump zero
+    SymJmp,         // symbolic jump
+    SymJmpZ,        // symbolic jump zero
+    Call,           // call
+    Ret,            // return
+    Label,          // label (for symbolic jumps)
 }
 
 impl Display for BCType {
@@ -32,8 +34,10 @@ impl Display for BCType {
                 &BCType::Pop => "POP",
                 &BCType::PopN => "POPN",
                 &BCType::Load => "LOAD",
-                &BCType::JmpZ => "JMPZ",
                 &BCType::Jmp => "JMP",
+                &BCType::JmpZ => "JMPZ",
+                &BCType::SymJmp => "SYMJMP",
+                &BCType::SymJmpZ => "SYMJMPZ",
                 &BCType::Call => "CALL",
                 &BCType::Ret => "RET",
                 &BCType::Label => "LABEL",
@@ -95,7 +99,18 @@ impl BC {
         }
     }
 
+    pub fn jmp(tokens: Tokens, val: BCVal) -> BC {
+        // TODO(labels) address BCVal
+        assert_matches!(val, BCVal::Int(_));
+        BC {
+            bc_type: BCType::Jmp,
+            tokens,
+            val: Some(val),
+        }
+    }
+
     pub fn jmpz(tokens: Tokens, val: BCVal) -> BC {
+        // TODO(labels) address BCVal
         assert_matches!(val, BCVal::Int(_));
         BC {
             bc_type: BCType::JmpZ,
@@ -104,10 +119,21 @@ impl BC {
         }
     }
 
-    pub fn jmp(tokens: Tokens, val: BCVal) -> BC {
+    pub fn symjmp(tokens: Tokens, val: BCVal) -> BC {
+        // TODO(labels) address BCVal
         assert_matches!(val, BCVal::Int(_));
         BC {
-            bc_type: BCType::Jmp,
+            bc_type: BCType::SymJmp,
+            tokens,
+            val: Some(val),
+        }
+    }
+
+    pub fn symjmpz(tokens: Tokens, val: BCVal) -> BC {
+        // TODO(labels) address BCVal
+        assert_matches!(val, BCVal::Int(_));
+        BC {
+            bc_type: BCType::SymJmpZ,
             tokens,
             val: Some(val),
         }
@@ -155,8 +181,8 @@ impl From<IR> for BC {
             IRType::Pop => BCType::Pop,
             IRType::PopN => BCType::PopN,
             IRType::Load => BCType::Load,
-            IRType::JmpZ => BCType::JmpZ,
-            IRType::Jmp => BCType::Jmp,
+            IRType::Jmp => BCType::SymJmp,
+            IRType::JmpZ => BCType::SymJmpZ,
             IRType::Call => BCType::Call,
             IRType::Ret => BCType::Ret,
             IRType::Bake => panic!("IRType::Bake instructions cannot be converted to any BCType instruction"),

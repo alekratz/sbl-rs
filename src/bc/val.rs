@@ -11,6 +11,7 @@ pub enum BCVal {
     Bool(bool),
     Stack(Vec<BCVal>),
     PushAll(Vec<BCVal>),
+    // TODO(labels) address BCVal
     Nil,
 }
 

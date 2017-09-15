@@ -242,16 +242,28 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                         let jmp_label = IRVal::Int(*self.label_offset as i64);
                         body[jmp_addr] = Some(IR::jmpz(
                                 br.tokens().into(), jmp_label.clone()));
-                        body.push(Some(IR::label(br.tokens().into(), jmp_label)));
+                        // If there's an else statement, it will make its own jump label so that
+                        // the instruction order is correct (and we're not jumping before another
+                        // jump)
+                        if br.el_stmt.is_none() {
+                            body.push(Some(IR::label(br.tokens().into(), jmp_label)));
+                        }
                     }
 
                     //
                     // Compile the 'el' block, if necessary
                     //
                     if let &Some(ref el) = &br.el_stmt {
-                        // Push the unconditional jump statement
+                        // Push the unconditional jump statement, followed by the label.
+                        //
                         let jmp_addr = body.len();
                         body.push(None);
+                        // don't increment the label here, because we're using the previous label
+                        // from above.
+                        let jmp_label = IRVal::Int(*self.label_offset as i64);
+                        body.push(Some(IR::label(br.tokens().into(), jmp_label)));
+
+                        // Compile the 'el' block
                         {
                             let block_compiler = CompileIRBlock::new(
                                 self.fun_table,
@@ -264,7 +276,8 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                                 .map(Some)
                                 .collect());
                         }
-                        // Create the label and fill in the previous jump
+
+                        // Create the label above and fill in the previous jump
                         *self.label_offset += 1;
                         let jmp_label = IRVal::Int(*self.label_offset as i64);
                         body[jmp_addr] = Some(IR::jmp(el.tokens().into(), jmp_label.clone()));

@@ -38,6 +38,7 @@ lazy_static! {
 
             // Debug functions
             "^dump_stack" => dump_stack,
+            "pause" => pause,
         }
     };
 }
@@ -308,3 +309,11 @@ fn dump_stack(state: &mut State) -> Result<()> {
     eprintln!("{}", "-".repeat(72));
     Ok(())
 }
+
+fn pause(_: &mut State) -> Result<()> {
+    eprintln!("Press RETURN to continue . . .");
+    let mut input = String::new();
+    ::std::io::stdin().read_line(&mut input).unwrap_or(0);
+    return Ok(())
+}
+

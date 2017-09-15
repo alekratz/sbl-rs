@@ -1,8 +1,8 @@
 pub mod fun;
 pub mod val;
 
-pub use ir::fun::*;
-pub use ir::val::*;
+pub use self::fun::*;
+pub use self::val::*;
 
 use prelude::*;
 use std::fmt::{self, Formatter, Display};
