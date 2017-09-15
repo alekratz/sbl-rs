@@ -117,3 +117,9 @@ impl From<IRVal> for BCVal {
         }
     }
 }
+
+impl From<usize> for BCVal {
+    fn from(other: usize) -> Self {
+        BCVal::Address(other)
+    }
+}

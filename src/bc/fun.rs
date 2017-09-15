@@ -2,6 +2,7 @@ use prelude::*;
 //use itertools::Itertools;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::mem;
 
 pub type BCFunTable = HashMap<String, BCFun>;
 pub type BCFunRcTable = HashMap<String, Rc<BCFun>>;
@@ -72,6 +73,28 @@ impl BCUserFun {
             }
             body
         });
+    }
+
+    pub fn apply_absolute_jumps(&mut self) {
+        // Create a label table
+        let labels: HashMap<i64, usize> = self.body
+            .iter()
+            .enumerate()
+            .fold(HashMap::new(), |mut labels, (addr, instr)| {
+                if instr.bc_type == BCType::Label {
+                    let lblcount = labels.len();
+                    labels.insert(*instr.val.as_ref().unwrap().as_int(), addr - lblcount);
+                }
+                labels
+            });
+        // Replace symbolic jumps with absolute jumps, and remove the labels as well
+        self.body = mem::replace(&mut self.body, Vec::new())
+            .into_iter()
+            .filter(|instr| instr.bc_type != BCType::Label)
+            .map(|instr| if instr.bc_type == BCType::SymJmp { BC::jmp(instr.tokens, labels[instr.val.unwrap().as_int()].into()) }
+                 else if instr.bc_type == BCType::SymJmpZ { BC::jmpz(instr.tokens, labels[instr.val.unwrap().as_int()].into()) }
+                 else { instr })
+            .collect()
     }
 }
 
