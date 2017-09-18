@@ -20,6 +20,7 @@ pub enum IRType {
     Ret,
     Bake,
     Label,
+    Nop,
 }
 
 impl Display for IRType {
@@ -39,6 +40,7 @@ impl Display for IRType {
                 &IRType::Ret => "RET",
                 &IRType::Bake => "BAKE",
                 &IRType::Label => "LABEL",
+                &IRType::Nop => "NOP",
             }
         )
     }
@@ -148,6 +150,14 @@ impl IR {
             ir_type: IRType::Label,
             tokens,
             val: Some(val),
+        }
+    }
+
+    pub fn nop() -> IR {
+        IR {
+            ir_type: IRType::Nop,
+            tokens: vec![],
+            val: None,
         }
     }
 }

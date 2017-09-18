@@ -10,8 +10,8 @@ use std::collections::BTreeMap;
 type BoringTable = BTreeMap<String, Option<IRFun>>;
 
 pub struct CompileIR<'ast> {
-    ast: &'ast AST,
-    fun_table: BoringTable,
+    pub ast: &'ast AST,
+    pub fun_table: BoringTable,
 }
 
 impl<'ast> Compile for CompileIR<'ast> {

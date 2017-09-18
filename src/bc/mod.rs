@@ -21,6 +21,7 @@ pub enum BCType {
     Call,           // call
     Ret,            // return
     Label,          // label (for symbolic jumps)
+    Nop,            // no-op
 }
 
 impl Display for BCType {
@@ -41,6 +42,7 @@ impl Display for BCType {
                 &BCType::Call => "CALL",
                 &BCType::Ret => "RET",
                 &BCType::Label => "LABEL",
+                &BCType::Nop => "NOP",
             }
         )
     }
@@ -183,6 +185,7 @@ impl From<IR> for BC {
             IRType::Ret => BCType::Ret,
             IRType::Bake => panic!("IRType::Bake instructions cannot be converted to any BCType instruction"),
             IRType::Label => BCType::Label,
+            IRType::Nop => BCType::Nop,
         };
         BC {
             bc_type: new_type,

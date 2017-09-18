@@ -360,7 +360,7 @@ impl VM {
                         state.increment_pc();
                     }
                     BCType::Ret => break,
-                    BCType::Label => {
+                    BCType::Nop | BCType::Label => {
                         let mut state = self.state.borrow_mut();
                         state.increment_pc();
                     },
