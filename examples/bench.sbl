@@ -1,0 +1,10 @@
+main {
+    "running 10^5 loops" !println
+    100000 .n
+    T
+    loop {
+        .@
+        n 1 - .n
+        n 0 >
+    }
+}

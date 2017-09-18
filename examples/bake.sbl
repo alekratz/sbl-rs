@@ -1,0 +1,18 @@
+main {
+    bake-first
+    bake-second
+    bake-third
+}
+
+bake-first {
+    bake { .a }
+}
+
+bake-second {
+    bake { .b }
+    bake-third
+}
+
+bake-third {
+    bake-first
+}
