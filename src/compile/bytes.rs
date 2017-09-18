@@ -127,6 +127,7 @@ impl OptimizeBCInline {
                 }
             }
 
+            // TODO : use mem::replace to avoid a lot of this extra work
             let tokens = self.fun_table
                 .get(&fname)
                 .unwrap()
@@ -134,10 +135,17 @@ impl OptimizeBCInline {
                 .tokens
                 .clone();
 
+            let locals = self.fun_table
+                .get(&fname)
+                .unwrap()
+                .as_user_fun()
+                .locals
+                .clone();
+
             // replace the function with the new body
             self.fun_table.insert(
                 fname.clone(),
-                Fun::UserFun(BCUserFun::new(fname, new_body, tokens)),
+                Fun::UserFun(BCUserFun::new(fname, new_body, tokens, locals)),
             );
         }
     }

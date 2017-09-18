@@ -13,6 +13,7 @@ pub enum BCType {
     PushL,          // push list
     Pop,            // pop
     PopN,           // pop N items
+    PopDiscard,     // pop, discarding the value
     Load,           // load variable
     Jmp,            // jump unconditionally
     JmpZ,           // jump zero
@@ -34,6 +35,7 @@ impl Display for BCType {
                 &BCType::PushL => "PUSHL",
                 &BCType::Pop => "POP",
                 &BCType::PopN => "POPN",
+                &BCType::PopDiscard => "POP_DISCARD",
                 &BCType::Load => "LOAD",
                 &BCType::Jmp => "JMP",
                 &BCType::JmpZ => "JMPZ",
@@ -176,8 +178,12 @@ impl From<IR> for BC {
                 tokens: other.tokens,
             },
             IRType::PushL => BCType::PushL,
-            IRType::Pop => BCType::Pop,
-            IRType::PopN => BCType::PopN,
+            IRType::Pop => match other.val {
+                Some(IRVal::Ident(_)) => BCType::Pop,
+                Some(IRVal::Int(_)) => BCType::PopN,
+                Some(IRVal::Nil) => BCType::PopDiscard,
+                _ => unreachable!(),
+            },
             IRType::Load => BCType::Load,
             IRType::Jmp => BCType::SymJmp,
             IRType::JmpZ => BCType::SymJmpZ,

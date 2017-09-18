@@ -8,32 +8,33 @@ use std::rc::Rc;
 pub struct BCFunState {
     pub fun: Rc<BCUserFun>,
     pub pc: usize,
-    pub locals: BTreeMap<String, BCVal>,
+    pub locals: Vec<Option<BCVal>>,
     // TODO : callsite
 }
 
 impl BCFunState {
-    pub fn load(&self, name: &str) -> Result<&BCVal> {
-        if let Some(ref val) = self.locals.get(name) {
+    pub fn load(&self, varnum: usize) -> Result<&BCVal> {
+        if let Some(ref val) = self.locals[varnum] {
             Ok(val)
         } else {
+            let ref name = self.fun.locals[varnum];
             Err(
                 format!("attempted to load unassigned local variable `{}`", name).into(),
             )
         }
     }
 
-    pub fn store(&mut self, name: String, val: BCVal) {
-        self.locals.insert(name.to_string(), val);
+    pub fn store(&mut self, varnum: usize, val: BCVal) {
+        self.locals[varnum] = Some(val);
     }
 }
 
 impl From<Rc<BCUserFun>> for BCFunState {
     fn from(other: Rc<BCUserFun>) -> Self {
         BCFunState {
-            fun: other,
+            fun: other.clone(),
             pc: 0,
-            locals: BTreeMap::new(),
+            locals: vec!(None; other.locals.len()),
         }
     }
 }
@@ -56,14 +57,14 @@ impl State {
         }
     }
 
-    pub fn load(&self, name: &str) -> Result<&BCVal> {
+    pub fn load(&self, varnum: usize) -> Result<&BCVal> {
         let caller = self.current_fun();
-        caller.load(name)
+        caller.load(varnum)
     }
 
-    pub fn store(&mut self, name: String, val: BCVal) {
+    pub fn store(&mut self, varnum: usize, val: BCVal) {
         let mut caller = self.current_fun_mut();
-        caller.store(name, val);
+        caller.store(varnum, val);
     }
 
     pub fn peek(&self) -> Result<&BCVal> {
@@ -284,12 +285,9 @@ impl VM {
                     BCType::Pop => {
                         let mut state = self.state.borrow_mut();
                         let tos = state.pop()?;
-                        let val = val.unwrap();
-                        match val {
-                            BCVal::Ident(ident) => state.store(ident, tos),
-                            BCVal::Nil => { /* do nothing */ }
-                            _ => unreachable!(),
-                        }
+                        let varnum = *val.unwrap()
+                            .as_address();
+                        state.store(varnum, tos);
                         state.increment_pc();
                     }
                     BCType::PopN => {
@@ -298,11 +296,16 @@ impl VM {
                         state.popn(i)?;
                         state.increment_pc();
                     }
+                    BCType::PopDiscard => {
+                        let mut state = self.state.borrow_mut();
+                        state.pop()?;
+                        state.increment_pc();
+                    }
                     BCType::Load => {
                         let mut state = self.state.borrow_mut();
-                        let val = val.unwrap();
-                        let ident = val.as_ident();
-                        let val = state.load(&ident)?.clone();
+                        let varnum = *val.unwrap()
+                            .as_address();
+                        let val = state.load(varnum)?.clone();
                         state.push(val);
                         state.increment_pc();
                     }

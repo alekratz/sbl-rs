@@ -25,10 +25,17 @@ impl BakeIRFunTable {
                 let tokens = ir.tokens.clone();
                 let ir_body = ir.val.unwrap()
                     .into_bake_block();
+                let mut locals: Vec<String> = ir_body.iter()
+                    .filter_map(|ir| if ir.ir_type == IRType::Pop && ir.val.as_ref().map(|v| v.is_ident()).unwrap_or(false) {
+                        ir.val.as_ref().map(|v| v.as_ident().clone())
+                    } else {
+                        None
+                    })
+                    .collect();
                 let mut compiled = self.compile_ir_body(ir_body)?;
                 compiled.push(BC::ret(tokens.clone()));
                 let mut vm = self.vm.borrow_mut();
-                vm.inject_user_fun(BCUserFun::new(format!("<bake block at {}>", tokens.range()), compiled, tokens.clone()))?;
+                vm.inject_user_fun(BCUserFun::new(format!("<bake block at {}>", tokens.range()), compiled, tokens.clone(), locals))?;
                 let state: State = vm.clone()
                     .into();
                 Ok(state.stack
@@ -73,11 +80,19 @@ impl Compile for BakeIRFunTable {
             .map(|fun_index| {
                 let fname = &self.bake_graph[fun_index];
                 let fun = self.ir_fun_table[fname].as_user_fun();
+                let mut locals: Vec<String> = fun.body
+                    .iter()
+                    .filter_map(|ir| if ir.ir_type == IRType::Pop && ir.val.as_ref().map(|v| v.is_ident()).unwrap_or(false) {
+                        ir.val.as_ref().map(|v| v.as_ident().clone())
+                    } else {
+                        None
+                    })
+                    .collect();
                 let body = match self.compile_ir_body(fun.body.clone()) {
                     Ok(f) => f,
                     Err(e) => return Err(e),
                 };
-                let userfun = Fun::UserFun(BCUserFun::new(fname.to_string(), body, fun.tokens.clone()));
+                let userfun = Fun::UserFun(BCUserFun::new(fname.to_string(), body, fun.tokens.clone(), locals));
                 let mut vm = self.vm.borrow_mut();
                 vm.add_fun(fname.to_string(), userfun.clone());
                 Ok(userfun)

@@ -147,13 +147,7 @@ impl<'ft, 'b, 'l> CompileIRBlock<'ft, 'b, 'l> {
         for action in &stmt.stack_actions {
             match *action {
                 StackAction::Push(ref i) => body.append(&mut self.compile_item_push(i)?),
-                StackAction::Pop(_, ref i) => {
-                    if matches!(i.item_type, ItemType::Int(_)) {
-                        body.push(IR::popn(action.tokens().into(), i.into()))
-                    } else {
-                        body.push(IR::pop(action.tokens().into(), i.into()))
-                    }
-                }
+                StackAction::Pop(_, ref i) => body.push(IR::pop(action.tokens().into(), i.into())),
             }
         }
         Ok(body)

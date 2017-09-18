@@ -1,6 +1,6 @@
 main {
-    "running 10^5 loops" !println
-    100000 .n
+    "running 10^6 loops" !println
+    1000000 .n
     T
     loop {
         .@

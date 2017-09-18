@@ -12,7 +12,6 @@ pub enum IRType {
     Push,
     PushL,
     Pop,
-    PopN,
     Load,
     JmpZ,
     Jmp,
@@ -32,7 +31,6 @@ impl Display for IRType {
                 &IRType::Push => "PUSH",
                 &IRType::PushL => "PUSHL",
                 &IRType::Pop => "POP",
-                &IRType::PopN => "POPN",
                 &IRType::Load => "LOAD",
                 &IRType::JmpZ => "JMPZ",
                 &IRType::Jmp => "JMP",
@@ -77,15 +75,6 @@ impl IR {
     pub fn pop(tokens: Tokens, val: IRVal) -> IR {
         IR {
             ir_type: IRType::Pop,
-            tokens,
-            val: Some(val),
-        }
-    }
-
-    pub fn popn(tokens: Tokens, val: IRVal) -> IR {
-        assert_matches!(val, IRVal::Int(_));
-        IR {
-            ir_type: IRType::PopN,
             tokens,
             val: Some(val),
         }
