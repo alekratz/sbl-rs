@@ -1,6 +1,6 @@
 use prelude::*;
 use libc::c_void;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -8,7 +8,7 @@ use std::rc::Rc;
 pub struct BCFunState {
     pub fun: Rc<BCUserFun>,
     pub pc: usize,
-    pub locals: HashMap<String, BCVal>,
+    pub locals: BTreeMap<String, BCVal>,
     // TODO : callsite
 }
 
@@ -33,7 +33,7 @@ impl From<Rc<BCUserFun>> for BCFunState {
         BCFunState {
             fun: other,
             pc: 0,
-            locals: HashMap::new(),
+            locals: BTreeMap::new(),
         }
     }
 }
@@ -42,8 +42,8 @@ impl From<Rc<BCUserFun>> for BCFunState {
 pub struct State {
     pub stack: Vec<BCVal>,
     pub call_stack: Vec<BCFunState>,
-    pub dl_handles: HashMap<String, *mut c_void>,
-    pub foreign_functions: HashMap<String, *mut c_void>,
+    pub dl_handles: BTreeMap<String, *mut c_void>,
+    pub foreign_functions: BTreeMap<String, *mut c_void>,
 }
 
 impl State {
@@ -51,8 +51,8 @@ impl State {
         State {
             stack: vec![],
             call_stack: vec![],
-            dl_handles: HashMap::new(),
-            foreign_functions: HashMap::new(),
+            dl_handles: BTreeMap::new(),
+            foreign_functions: BTreeMap::new(),
         }
     }
 
@@ -157,7 +157,7 @@ impl From<VM> for State {
 pub struct VM {
     fun_table: BCFunRcTable,
     state: RefCell<State>,
-    user_fun_cache: HashMap<String, Rc<BCUserFun>>,
+    user_fun_cache: BTreeMap<String, Rc<BCUserFun>>,
 }
 
 impl VM {
@@ -170,7 +170,7 @@ impl VM {
         VM {
             fun_table: rc_table,
             state: RefCell::new(State::new()),
-            user_fun_cache: HashMap::new(),
+            user_fun_cache: BTreeMap::new(),
         }
     }
 

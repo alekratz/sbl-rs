@@ -1,11 +1,11 @@
 use prelude::*;
 //use itertools::Itertools;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::mem;
 
-pub type BCFunTable = HashMap<String, BCFun>;
-pub type BCFunRcTable = HashMap<String, Rc<BCFun>>;
+pub type BCFunTable = BTreeMap<String, BCFun>;
+pub type BCFunRcTable = BTreeMap<String, Rc<BCFun>>;
 
 #[derive(Clone, Debug)]
 pub struct BCUserFun {
@@ -77,10 +77,10 @@ impl BCUserFun {
 
     pub fn apply_absolute_jumps(&mut self) {
         // Create a label table
-        let labels: HashMap<i64, usize> = self.body
+        let labels: BTreeMap<i64, usize> = self.body
             .iter()
             .enumerate()
-            .fold(HashMap::new(), |mut labels, (addr, instr)| {
+            .fold(BTreeMap::new(), |mut labels, (addr, instr)| {
                 if instr.bc_type == BCType::Label {
                     let lblcount = labels.len();
                     labels.insert(*instr.val.as_ref().unwrap().as_int(), addr - lblcount);

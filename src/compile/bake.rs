@@ -57,7 +57,7 @@ impl Compile for BakeIRFunTable {
             .clone()
             .into_iter()
             .map(|(k, v)| (k, Some(v)))
-            .collect::<HashMap<_, _>>();
+            .collect::<BTreeMap<_, _>>();
             */
 
 

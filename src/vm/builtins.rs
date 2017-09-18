@@ -1,12 +1,12 @@
 use prelude::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::cmp::Ordering;
 
 pub type BuiltinFun = fn(&mut State) -> Result<()>;
 
 lazy_static! {
-    pub static ref BUILTINS: HashMap<&'static str, BuiltinFun> = {
-        hashmap! {
+    pub static ref BUILTINS: BTreeMap<&'static str, BuiltinFun> = {
+        btreemap! {
             // Operations
             "+" => plus as BuiltinFun,  // for some reason this cascades down the list
             "-" => minus,

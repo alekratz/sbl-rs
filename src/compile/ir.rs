@@ -1,5 +1,5 @@
 use prelude::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /*
  * IR compiler
@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 /// A BoringTable is the predecessor to a BCFunTable; function names are first
 /// gathered, and then filled in.
-type BoringTable = HashMap<String, Option<IRFun>>;
+type BoringTable = BTreeMap<String, Option<IRFun>>;
 
 pub struct CompileIR<'ast> {
     ast: &'ast AST,
@@ -68,7 +68,7 @@ impl<'ast> CompileIR<'ast> {
 
     /// Appends a set of builtin functions to the funtable. Overwrites any
     /// functions that have been defined already.
-    pub fn builtins(mut self, builtins: &'static HashMap<&'static str, BuiltinFun>) -> Self {
+    pub fn builtins(mut self, builtins: &'static BTreeMap<&'static str, BuiltinFun>) -> Self {
         for (k, v) in builtins.into_iter().map(|(k, v)| {
             (k.to_string(), Some(Fun::BuiltinFun(v)))
         })

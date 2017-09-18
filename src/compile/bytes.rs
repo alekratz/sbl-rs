@@ -1,5 +1,5 @@
 use prelude::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub struct CompileBytes {
     fun_table: IRFunTable,
@@ -34,7 +34,7 @@ impl Compile for CompileBytes {
 /// An optimizer that inlines functions.
 pub struct OptimizeBCInline {
     fun_table: BCFunTable,
-    to_inline: HashMap<String, BCBody>,
+    to_inline: BTreeMap<String, BCBody>,
 }
 
 impl Optimize for OptimizeBCInline {
@@ -52,7 +52,7 @@ impl OptimizeBCInline {
     pub fn new(fun_table: BCFunTable) -> Self {
         OptimizeBCInline {
             fun_table,
-            to_inline: HashMap::new(),
+            to_inline: BTreeMap::new(),
         }
     }
     /// Determines whether a given function should be inlined.
