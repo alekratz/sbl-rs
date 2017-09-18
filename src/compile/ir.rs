@@ -10,8 +10,8 @@ use std::collections::BTreeMap;
 type BoringTable = BTreeMap<String, Option<IRFun>>;
 
 pub struct CompileIR<'ast> {
-    pub ast: &'ast AST,
-    pub fun_table: BoringTable,
+    ast: &'ast AST,
+    fun_table: BoringTable,
 }
 
 impl<'ast> Compile for CompileIR<'ast> {
@@ -201,10 +201,7 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
         for stmt in &self.block.block {
             match *stmt {
                 Stmt::Stack(ref s) => {
-                    body.append(&mut self.compile_stack_stmt(s)?
-                        .into_iter()
-                        .map(Some)
-                        .collect())
+                    body.append(&mut self.compile_stack_stmt(s)?)
                 }
                 Stmt::Br(ref br) => {
                     //
@@ -228,25 +225,21 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                     {
                         let jmp_addr = body.len();
                         // Push the conditional jump
-                        body.push(None);
+                        body.push(IR::nop());
                         {
                             let block_compiler = CompileIRBlock::new(self.fun_table, &br.block, self.label_offset);
-                            body.append(&mut block_compiler
-                                        .compile()?
-                                        .into_iter()
-                                        .map(Some)
-                                        .collect());
+                            body.append(&mut block_compiler.compile()?);
                         }
                         // Fill in the jump in the slot we made earlier, and create the label
                         *self.label_offset += 1;
                         let jmp_label = IRVal::Int(*self.label_offset as i64);
-                        body[jmp_addr] = Some(IR::jmpz(
-                                br.tokens().into(), jmp_label.clone()));
+                        body[jmp_addr] = IR::jmpz(
+                                br.tokens().into(), jmp_label.clone());
                         // If there's an else statement, it will make its own jump label so that
                         // the instruction order is correct (and we're not jumping before another
                         // jump)
                         if br.el_stmt.is_none() {
-                            body.push(Some(IR::label(br.tokens().into(), jmp_label)));
+                            body.push(IR::label(br.tokens().into(), jmp_label));
                         }
                     }
 
@@ -257,11 +250,11 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                         // Push the unconditional jump statement, followed by the label.
                         //
                         let jmp_addr = body.len();
-                        body.push(None);
+                        body.push(IR::nop());
                         // don't increment the label here, because we're using the previous label
                         // from above.
                         let jmp_label = IRVal::Int(*self.label_offset as i64);
-                        body.push(Some(IR::label(br.tokens().into(), jmp_label)));
+                        body.push(IR::label(br.tokens().into(), jmp_label));
 
                         // Compile the 'el' block
                         {
@@ -270,18 +263,14 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                                 &el.block,
                                 self.label_offset
                             );
-                            body.append(&mut block_compiler
-                                .compile()?
-                                .into_iter()
-                                .map(Some)
-                                .collect());
+                            body.append(&mut block_compiler.compile()?);
                         }
 
                         // Create the label above and fill in the previous jump
                         *self.label_offset += 1;
                         let jmp_label = IRVal::Int(*self.label_offset as i64);
-                        body[jmp_addr] = Some(IR::jmp(el.tokens().into(), jmp_label.clone()));
-                        body.push(Some(IR::label(el.tokens().into(), jmp_label)));
+                        body[jmp_addr] = IR::jmp(el.tokens().into(), jmp_label.clone());
+                        body.push(IR::label(el.tokens().into(), jmp_label));
                     }
                 }
                 Stmt::Loop(ref lp) => {
@@ -296,49 +285,43 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                     // Create the initial label and jump
                     *self.label_offset += 1;
                     let jmp_label = IRVal::Int(*self.label_offset as i64);
-                    body.push(Some(IR::label(lp.tokens().into(), jmp_label.clone())));
+                    body.push(IR::label(lp.tokens().into(), jmp_label.clone()));
                     let jmp_addr = body.len();
-                    body.push(None);
+                    body.push(IR::nop());
                     //
                     // Compile the 'loop' block
                     //
                     {
                         let block_compiler =
                             CompileIRBlock::new(self.fun_table, &lp.block, self.label_offset);
-                        body.append(&mut block_compiler
-                            .compile()?
-                            .into_iter()
-                            .map(Some)
-                            .collect());
+                        body.append(&mut block_compiler.compile()?);
                     }
                     // Create the jump to the next check
-                    body.push(Some(
-                        IR::jmp(lp.tokens().into(), jmp_label),
-                    ));
+                    body.push(IR::jmp(lp.tokens().into(), jmp_label));
                     // Create the label and fill in the previous jump
                     *self.label_offset += 1;
                     let jmp_label = IRVal::Int(*self.label_offset as i64);
-                    body[jmp_addr] = Some(IR::jmpz(
+                    body[jmp_addr] = IR::jmpz(
                         lp.tokens().into(),
                         jmp_label.clone()
-                    ));
-                    body.push(Some(IR::label(lp.tokens().into(), jmp_label.clone())));
+                    );
+                    body.push(IR::label(lp.tokens().into(), jmp_label.clone()));
                 }
                 Stmt::Bake(ref block) => {
                     //
                     // Bake blocks are special. They get executed at the time that bytecode is
                     // compiled. Thus, they are simply opaque instructions that get resolved later.
                     //
-                    body.push(Some(IR::bake(
+                    body.push(IR::bake(
                         block.tokens().into(),
                         IRVal::BakeBlock({
                             let bake_compiler = CompileIRBlock::new(self.fun_table, &block.block, self.label_offset);
                             bake_compiler.compile()?
                         }),
-                    )))
+                    ))
                 }
             }
         }
-        Ok(body.into_iter().map(Option::unwrap).collect())
+        Ok(body)
     }
 }
