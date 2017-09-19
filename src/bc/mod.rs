@@ -15,6 +15,7 @@ pub enum BCType {
     PopN,           // pop N items
     PopDiscard,     // pop, discarding the value
     Load,           // load variable
+    StoreConst,     // store a constant value in a variable
     Jmp,            // jump unconditionally
     JmpZ,           // jump zero
     SymJmp,         // symbolic jump
@@ -37,10 +38,11 @@ impl Display for BCType {
                 &BCType::PopN => "POPN",
                 &BCType::PopDiscard => "POP_DISCARD",
                 &BCType::Load => "LOAD",
+                &BCType::StoreConst => "STORE_CONST",
                 &BCType::Jmp => "JMP",
                 &BCType::JmpZ => "JMPZ",
-                &BCType::SymJmp => "SYMJMP",
-                &BCType::SymJmpZ => "SYMJMPZ",
+                &BCType::SymJmp => "SYM_JMP",
+                &BCType::SymJmpZ => "SYM_JMPZ",
                 &BCType::Call => "CALL",
                 &BCType::Ret => "RET",
                 &BCType::Label => "LABEL",
@@ -69,40 +71,6 @@ impl BC {
         }
     }
 
-    pub fn pushl(tokens: Tokens) -> BC {
-        BC {
-            bc_type: BCType::PushL,
-            tokens,
-            val: None,
-        }
-    }
-
-    pub fn pop(tokens: Tokens, val: BCVal) -> BC {
-        BC {
-            bc_type: BCType::Pop,
-            tokens,
-            val: Some(val),
-        }
-    }
-
-    pub fn popn(tokens: Tokens, val: BCVal) -> BC {
-        assert_matches!(val, BCVal::Int(_));
-        BC {
-            bc_type: BCType::PopN,
-            tokens,
-            val: Some(val),
-        }
-    }
-
-    pub fn load(tokens: Tokens, val: BCVal) -> BC {
-        assert_matches!(val, BCVal::Ident(_));
-        BC {
-            bc_type: BCType::Load,
-            tokens,
-            val: Some(val),
-        }
-    }
-
     pub fn jmp(tokens: Tokens, val: BCVal) -> BC {
         assert_matches!(val, BCVal::Address(_));
         BC {
@@ -121,47 +89,11 @@ impl BC {
         }
     }
 
-    pub fn symjmp(tokens: Tokens, val: BCVal) -> BC {
-        assert_matches!(val, BCVal::Int(_));
-        BC {
-            bc_type: BCType::SymJmp,
-            tokens,
-            val: Some(val),
-        }
-    }
-
-    pub fn symjmpz(tokens: Tokens, val: BCVal) -> BC {
-        assert_matches!(val, BCVal::Int(_));
-        BC {
-            bc_type: BCType::SymJmpZ,
-            tokens,
-            val: Some(val),
-        }
-    }
-
-    pub fn call(tokens: Tokens, val: BCVal) -> BC {
-        assert_matches!(val, BCVal::Ident(_));
-        BC {
-            bc_type: BCType::Call,
-            tokens,
-            val: Some(val),
-        }
-    }
-
     pub fn ret(tokens: Tokens) -> BC {
         BC {
             bc_type: BCType::Ret,
             tokens,
             val: None,
-        }
-    }
-
-    pub fn label(tokens: Tokens, val: BCVal) -> BC {
-        assert_matches!(val, BCVal::Int(_));
-        BC {
-            bc_type: BCType::Label,
-            tokens,
-            val: Some(val),
         }
     }
 }

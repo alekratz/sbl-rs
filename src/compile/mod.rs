@@ -1,6 +1,6 @@
-pub mod bytes;
-pub mod bake;
+pub mod bc;
 pub mod ir;
+pub mod bake;
 pub mod graph;
 
 use errors::*;
@@ -18,7 +18,7 @@ pub trait Optimize {
     fn optimize(self) -> Self::Out;
 }
 
-pub use self::bytes::*;
-pub use self::bake::*;
+pub use self::bc::*;
 pub use self::ir::*;
+pub use self::bake::*;
 pub use self::graph::*;

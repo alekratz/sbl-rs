@@ -309,6 +309,9 @@ impl VM {
                         state.push(val);
                         state.increment_pc();
                     }
+                    BCType::StoreConst => {
+                        unimplemented!("TODO : STORE_CONST")
+                    }
                     BCType::Jmp => {
                         let mut state = self.state.borrow_mut();
                         let addr = *val.unwrap().as_address();
