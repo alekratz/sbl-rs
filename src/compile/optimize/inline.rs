@@ -1,5 +1,6 @@
 use prelude::*;
 use std::collections::BTreeMap;
+use std::mem;
 
 /// An optimizer that inlines functions.
 pub struct Inline {
@@ -82,40 +83,29 @@ impl Inline {
 
         // this section applies optimizations
         for fname in to_optimize {
-            let mut new_body = vec![];
-            {
-                let fun = self.fun_table.get(&fname).unwrap();
-                let ref body = (fun as &BCFun).as_user_fun().body;
-                for bc in body {
-                    if self.is_inline_call(bc) {
-                        let call_name = bc.clone().val.unwrap().as_ident().to_string();
-                        new_body.append(&mut self.to_inline.get(&call_name).unwrap().clone());
+            let mut user_fun = self.fun_table
+                .remove(fname.as_str())
+                .unwrap();
+            if let Fun::UserFun(ref mut user_fun) = user_fun {
+                user_fun.body = mem::replace(&mut user_fun.body, Vec::new())
+                    .into_iter()
+                    .map(|bc| if self.is_inline_call(&bc) {
+                        let call_name = bc.val
+                            .as_ref()
+                            .unwrap()
+                            .as_ident()
+                            .to_string();
+                        self.to_inline
+                            .get(&call_name)
+                            .unwrap()
+                            .clone()
                     } else {
-                        new_body.push(bc.clone());
-                    }
-                }
+                        vec![bc]
+                    })
+                    .flat_map(|v| v)
+                    .collect();
             }
-
-            // TODO : use mem::replace to avoid a lot of this extra work
-            let tokens = self.fun_table
-                .get(&fname)
-                .unwrap()
-                .as_user_fun()
-                .tokens
-                .clone();
-
-            let locals = self.fun_table
-                .get(&fname)
-                .unwrap()
-                .as_user_fun()
-                .locals
-                .clone();
-
-            // replace the function with the new body
-            self.fun_table.insert(
-                fname.clone(),
-                Fun::UserFun(BCUserFun::new(fname, new_body, tokens, locals)),
-            );
+            self.fun_table.insert(fname, user_fun);
         }
     }
 }
