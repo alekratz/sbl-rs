@@ -57,6 +57,19 @@ impl State {
         }
     }
 
+    /// Dumps the current state to stderr
+    pub fn dump(&self) {
+        eprintln!("Call stack (address fname)");
+        for fun in &self.call_stack {
+            eprintln!("{:06} {}", fun.pc, fun.fun.name());
+        }
+        eprintln!();
+        eprintln!("Stack (top to bottom)");
+        for val in &self.stack {
+            eprintln!("    {}", val);
+        }
+    }
+
     pub fn load(&self, varnum: usize) -> Result<&BCVal> {
         let caller = self.current_fun();
         caller.load(varnum)
@@ -253,13 +266,20 @@ impl VM {
         Ok(())
     }
 
+    /// Prints out the VM state to the command line.
+    /// Useful for crash reports.
+    pub fn dump_state(&self) {
+        let state = self.state.borrow();
+        state.dump();
+    }
+
     fn invoke_user_fun(&mut self) -> Result<()> {
         loop {
-            let (bc_type, val, fun) = {
+            let (bc_type, target, val, fun) = {
                 let state = self.state.borrow();
                 let fun = state.current_fun();
                 let ref bc = fun.fun.body[fun.pc];
-                (bc.bc_type, bc.val.clone(), fun.fun.clone())
+                (bc.bc_type, bc.target.clone(), bc.val.clone(), fun.fun.clone())
             };
 
             {
@@ -283,6 +303,11 @@ impl VM {
                         state.increment_pc();
                     }
                     BCType::Pop => {
+                        // TODO : change POP to use 'target' instead of 'val'
+                        // TODO : change POP to use 'target' instead of 'val'
+                        // TODO : change POP to use 'target' instead of 'val'
+                        // TODO : change POP to use 'target' instead of 'val'
+                        // TODO : change POP to use 'target' instead of 'val'
                         let mut state = self.state.borrow_mut();
                         let tos = state.pop()?;
                         let varnum = *val.unwrap()
@@ -309,8 +334,13 @@ impl VM {
                         state.push(val);
                         state.increment_pc();
                     }
-                    BCType::StoreConst => {
-                        unimplemented!("TODO : STORE_CONST")
+                    BCType::Store => {
+                        let mut state = self.state.borrow_mut();
+                        let varnum = *target.unwrap()
+                            .as_address();
+                        let val = val.unwrap();
+                        state.store(varnum, val);
+                        state.increment_pc();
                     }
                     BCType::Jmp => {
                         let mut state = self.state.borrow_mut();

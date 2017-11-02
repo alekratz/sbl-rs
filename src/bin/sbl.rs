@@ -23,6 +23,7 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
         let fun_table = compiler.compile().chain_err(|| "Compile error")?;
         // run optimizations
         if optimize {
+            // TODO : Optimization groups
             OptimizePipeline::new(fun_table).optimize()
         } else {
             fun_table
@@ -45,7 +46,14 @@ fn run_program<P: AsRef<Path>, Q: AsRef<Path>>(
     }
     if !compile_only {
         let mut vm = VM::new(fun_table);
-        vm.run()
+        let res = vm.run();
+        // Dump the VM state on error if we're dumping code as well
+        if res.is_err() && dump {
+            eprintln!("- Begin VM state ---------------------------------------------------------------");
+            vm.dump_state();
+            eprintln!("--End VM state -----------------------------------------------------------------");
+        }
+        res
     } else {
         Ok(())
     }

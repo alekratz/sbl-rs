@@ -15,7 +15,7 @@ pub enum BCType {
     PopN,           // pop N items
     PopDiscard,     // pop, discarding the value
     Load,           // load variable
-    StoreConst,     // store a constant value in a variable
+    Store,          // do an immediate store into a variable
     Jmp,            // jump unconditionally
     JmpZ,           // jump zero
     SymJmp,         // symbolic jump
@@ -38,7 +38,7 @@ impl Display for BCType {
                 &BCType::PopN => "POPN",
                 &BCType::PopDiscard => "POP_DISCARD",
                 &BCType::Load => "LOAD",
-                &BCType::StoreConst => "STORE_CONST",
+                &BCType::Store => "STORE",
                 &BCType::Jmp => "JMP",
                 &BCType::JmpZ => "JMPZ",
                 &BCType::SymJmp => "SYM_JMP",
@@ -58,6 +58,7 @@ impl Instruction for BC { }
 pub struct BC {
     pub bc_type: BCType,
     pub tokens: Tokens,
+    pub target: Option<BCVal>,
     pub val: Option<BCVal>,
 }
 
@@ -67,7 +68,17 @@ impl BC {
         BC {
             bc_type: BCType::Push,
             tokens,
+            target: None,
             val: Some(val),
+        }
+    }
+
+    pub fn pop_discard(tokens: Tokens) -> BC {
+        BC {
+            bc_type: BCType::PopDiscard,
+            tokens,
+            target: None,
+            val: None,
         }
     }
 
@@ -76,6 +87,7 @@ impl BC {
         BC {
             bc_type: BCType::Jmp,
             tokens,
+            target: None,
             val: Some(val),
         }
     }
@@ -85,6 +97,7 @@ impl BC {
         BC {
             bc_type: BCType::JmpZ,
             tokens,
+            target: None,
             val: Some(val),
         }
     }
@@ -93,6 +106,7 @@ impl BC {
         BC {
             bc_type: BCType::Ret,
             tokens,
+            target: None,
             val: None,
         }
     }
@@ -105,15 +119,18 @@ impl From<IR> for BC {
         let new_type = match other.ir_type {
             IRType::Push => return BC {
                 bc_type: BCType::Push,
+                tokens: other.tokens,
+                target: None,
                 val: Some(BCVal::PushAll(vec![other.val.map(BCVal::from)
                                        .expect("BCType::Push expects a value")])),
-                tokens: other.tokens,
             },
             IRType::PushL => BCType::PushL,
             IRType::Pop => match other.val {
                 Some(IRVal::Ident(_)) => BCType::Pop,
                 Some(IRVal::Int(_)) => BCType::PopN,
-                Some(IRVal::Nil) => BCType::PopDiscard,
+                Some(IRVal::Nil) => {
+                    return BC::pop_discard(other.tokens)
+                },
                 _ => unreachable!(),
             },
             IRType::Load => BCType::Load,
@@ -127,8 +144,9 @@ impl From<IR> for BC {
         };
         BC {
             bc_type: new_type,
-            val: other.val.map(BCVal::from),
             tokens: other.tokens,
+            target: None,
+            val: other.val.map(BCVal::from),
         }
     }
 }

@@ -2,7 +2,6 @@ use prelude::*;
 //use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::rc::Rc;
-use std::mem;
 
 pub type BCFunTable = BTreeMap<String, BCFun>;
 pub type BCFunRcTable = BTreeMap<String, Rc<BCFun>>;
@@ -37,66 +36,22 @@ impl BCUserFun {
         let mut addr = 0;
         for bc in &self.body {
             eprintln!(
-                "{:06} {:8} {}",
+                "{:06} {:8}{}{}",
                 addr,
                 &bc.bc_type.to_string(),
                 if let Some(ref payload) = bc.val {
-                    format!("{:?}", payload)
+                    format!(" {:?}", payload)
                 } else {
                     format!("")
+                },
+                if let Some(ref target) = bc.target {
+                    format!(" -> {:?}", target)
+                } else {
+                    String::new()
                 }
             );
             addr += 1;
         }
-    }
-
-    /// Compresses all adjacent push statements to one statement.
-    pub fn compress_pushes(&mut self) {
-        let body = self.body
-            .clone()
-            .into_iter();
-        let mut last_was_push = false;
-        self.body = body.fold(vec![], |mut body, instr| {
-            if instr.bc_type == BCType::Push {
-                if last_was_push {
-                    let mut last_part = body.last_mut()
-                        .unwrap();
-                    last_part.val
-                        .as_mut()
-                        .unwrap()
-                        .append(&mut instr.val.unwrap());
-                } else {
-                    body.push(instr);
-                    last_was_push = true;
-                }
-            } else {
-                body.push(instr);
-                last_was_push = false;
-            }
-            body
-        });
-    }
-
-    pub fn apply_absolute_jumps(&mut self) {
-        // Create a label table
-        let labels: BTreeMap<i64, usize> = self.body
-            .iter()
-            .enumerate()
-            .fold(BTreeMap::new(), |mut labels, (addr, instr)| {
-                if instr.bc_type == BCType::Label {
-                    let lblcount = labels.len();
-                    labels.insert(*instr.val.as_ref().unwrap().as_int(), addr - lblcount);
-                }
-                labels
-            });
-        // Replace symbolic jumps with absolute jumps, and remove the labels as well
-        self.body = mem::replace(&mut self.body, Vec::new())
-            .into_iter()
-            .filter(|instr| instr.bc_type != BCType::Label)
-            .map(|instr| if instr.bc_type == BCType::SymJmp { BC::jmp(instr.tokens, labels[instr.val.unwrap().as_int()].into()) }
-                 else if instr.bc_type == BCType::SymJmpZ { BC::jmpz(instr.tokens, labels[instr.val.unwrap().as_int()].into()) }
-                 else { instr })
-            .collect()
     }
 }
 

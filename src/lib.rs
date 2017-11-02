@@ -10,7 +10,7 @@ extern crate matches;
 extern crate enum_methods;
 extern crate libc;
 extern crate libffi;
-extern crate itertools;
+//extern crate itertools;
 extern crate petgraph;
 #[macro_use]
 extern crate bitflags;

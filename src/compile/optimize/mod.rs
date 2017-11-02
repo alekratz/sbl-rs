@@ -2,9 +2,8 @@ mod inline;
 
 use prelude::*;
 use self::inline::*;
-
 use std::mem;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 /// A general optimization trait.
 pub trait Optimize {
@@ -14,7 +13,7 @@ pub trait Optimize {
 }
 
 /// An optimize map maps each user function using a given `FnMut(&mut BCUserFun)` closure.
-pub struct OptimizeMap<M> where M: FnMut(&mut BCUserFun) {
+struct OptimizeMap<M> where M: FnMut(&mut BCUserFun) {
     pub fun_table: BCFunTable,
     map_fn: M,
 }
@@ -47,8 +46,9 @@ impl<M> Optimize for OptimizeMap<M> where M: FnMut(&mut BCUserFun) {
 bitflags! {
     pub struct Optimizations: u32 {
         const INLINE                = 1 << 0;
-        const PUSH_COMPRESS         = 1 << 1;
-        const ABSOLUTE_JUMPS        = 1 << 2;
+        const STORE                 = 1 << 1;
+        const PUSH_COMPRESS         = 1 << 2;
+        const ABSOLUTE_JUMPS        = 1 << 3;
     }
 }
 
@@ -76,8 +76,9 @@ impl OptimizePipeline {
         // map of optimize map functions
         lazy_static! {
             static ref OPTIMAP: HashMap<Optimizations, fn(&mut BCUserFun)> = hashmap! {
-                Optimizations::PUSH_COMPRESS => BCUserFun::compress_pushes as fn(&mut BCUserFun),
-                Optimizations::ABSOLUTE_JUMPS => BCUserFun::apply_absolute_jumps,
+                Optimizations::PUSH_COMPRESS => BCUserFun::optimize_push_compress as fn(&mut BCUserFun),
+                Optimizations::ABSOLUTE_JUMPS => BCUserFun::optimize_jumps,
+                Optimizations::STORE => BCUserFun::optimize_store,
             };
         }
 
@@ -96,7 +97,6 @@ impl OptimizePipeline {
                 let opty = OptimizeMap::new(fun_table, OPTIMAP[&opt]);
                 self.fun_table = opty.optimize();
             }
-            _ => panic!("unknown optimization flag: {}", opt.bits)
         }
     }
 }
@@ -110,6 +110,9 @@ impl Optimize for OptimizePipeline {
             // INLINE can happen anywhere. Doing it before PUSH_COMPRESS is a good idea because
             // then any inlined PUSH instructions will get compressed later on.
             Optimizations::INLINE,
+            // STORE converts a PUSH of a const immediately followed by a POP to a
+            // STORE instruction
+            Optimizations::STORE,
             // PUSH_COMPRESS should happen near the end, because some pushes may get removed or
             // added to fix this up.
             Optimizations::PUSH_COMPRESS,
@@ -124,5 +127,99 @@ impl Optimize for OptimizePipeline {
             }
         }
         self.fun_table
+    }
+}
+
+/*
+ * BCUserFun functions for optimization specifically.
+ */
+
+impl BCUserFun {
+    /// Compresses all adjacent push statements to one statement.
+    ///
+    /// This is used exclusively by the optimizer.
+    pub(in compile::optimize) fn optimize_push_compress(&mut self) {
+        let body = self.body
+            .clone()
+            .into_iter();
+        // TODO : move this to using mem::replace
+        let mut last_was_push = false;
+        self.body = body.fold(vec![], |mut body, instr| {
+            if instr.bc_type == BCType::Push {
+                if last_was_push {
+                    let mut last_part = body.last_mut()
+                        .unwrap();
+                    last_part.val
+                        .as_mut()
+                        .unwrap()
+                        .append(&mut instr.val.unwrap());
+                } else {
+                    body.push(instr);
+                    last_was_push = true;
+                }
+            } else {
+                body.push(instr);
+                last_was_push = false;
+            }
+            body
+        });
+    }
+
+    /// Converts all SYM_JUMP* instructions into JMP* instructions. This speeds up program
+    /// execution by not having to do a label lookup every time a jump is done.
+    ///
+    /// This is used exclusively by the optimizer.
+    pub(in compile::optimize) fn optimize_jumps(&mut self) {
+        // Create a label table
+        let labels: BTreeMap<i64, usize> = self.body
+            .iter()
+            .enumerate()
+            .fold(BTreeMap::new(), |mut labels, (addr, instr)| {
+                if instr.bc_type == BCType::Label {
+                    let lblcount = labels.len();
+                    labels.insert(*instr.val.as_ref().unwrap().as_int(), addr - lblcount);
+                }
+                labels
+            });
+        // Replace symbolic jumps with absolute jumps, and remove the labels as well
+        self.body = mem::replace(&mut self.body, Vec::new())
+            .into_iter()
+            .filter(|instr| instr.bc_type != BCType::Label)
+            .map(|instr| if instr.bc_type == BCType::SymJmp { BC::jmp(instr.tokens, labels[instr.val.unwrap().as_int()].into()) }
+                 else if instr.bc_type == BCType::SymJmpZ { BC::jmpz(instr.tokens, labels[instr.val.unwrap().as_int()].into()) }
+                 else { instr })
+            .collect()
+    }
+
+    /// Converts a push followed immediately by a pop into a single "store" instruction.
+    /// This cuts down on wasted VM cycles and memory transactions.
+    ///
+    /// This is used exclusively by the optimizer.
+    pub(in compile::optimize) fn optimize_store(&mut self) {
+        let mut last_was_push = false;
+        self.body = mem::replace(&mut self.body, vec![])
+            .into_iter()
+            .fold(vec![], |mut body, instr| {
+                if instr.bc_type == BCType::Pop && last_was_push {
+                    // pop the last item; ensure that it's a push
+                    let last = body.pop().unwrap();
+                    assert!(last.bc_type == BCType::Push);
+                    let (mut tokens, mut val) = (last.tokens, last.val);
+                    if let Some(BCVal::PushAll(mut pushall)) = val {
+                        assert!(pushall.len() == 1, "Pushall value length was not 1; are STORE optimizations being done before PUSH_COMPRESS?");
+                        val = pushall.pop();
+                    }
+                    tokens.extend_from_slice(instr.tokens.as_slice());
+                    // TODO : change POP to use 'target' instead of 'val'
+                    let target = instr.val;
+                    assert_matches!(target, Some(BCVal::Address(_)));
+                    body.push(BC { bc_type: BCType::Store, tokens, target, val });
+                }
+                else {
+                    last_was_push = instr.bc_type == BCType::Push;
+                    body.push(instr);
+                }
+                body
+            });
     }
 }
