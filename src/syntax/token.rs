@@ -62,6 +62,7 @@ pub enum TokenType {
     KwNil,
     KwImport,
     KwBr,
+    KwElBr,
     KwEl,
     KwT,
     KwF,
@@ -94,6 +95,7 @@ impl Display for TokenType {
             KwNil => "nil sigil",
             KwImport => "import keyword",
             KwBr => "br keyword",
+            KwElBr => "elbr keyword",
             KwEl => "el keyword",
             KwT => "T keyword",
             KwF => "F keyword",
@@ -456,6 +458,7 @@ impl<'c> Tokenizer<'c> {
             static ref KEYWORDS: HashMap<&'static str, TokenType> = {
                 hashmap! {
                     "br" => TokenType::KwBr,
+                    "elbr" => TokenType::KwElBr,
                     "el" => TokenType::KwEl,
                     "loop" => TokenType::KwLoop,
                     "@" => TokenType::KwNil,
@@ -574,6 +577,7 @@ mod test {
         tests! {
             r#"
             br
+            elbr
             el
             loop
             T
@@ -583,6 +587,7 @@ mod test {
             foreign
             "#,
             (TokenType::KwBr)
+            (TokenType::KwElBr)
             (TokenType::KwEl)
             (TokenType::KwLoop)
             (TokenType::KwT)

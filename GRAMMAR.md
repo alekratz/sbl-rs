@@ -25,10 +25,13 @@ line = action
 action = '.' ( ident | nil )
        | item
 
-branch = <br> block
-       | <br> block <el> block
+branch = <br> action* block
+       | <br> action* block branch_tail
 
-loop = <loop> block
+branch_tail = <elbr> action* block branch_tail
+            | <el> block
+
+loop = <loop> action* block
 
 item = <ident>
      | <num>
@@ -52,6 +55,8 @@ nil = '@'
 dot = '.'
 
 br = 'br'
+
+elbr = 'elbr'
 
 el = 'el'
 
