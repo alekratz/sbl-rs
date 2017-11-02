@@ -76,7 +76,7 @@ impl State {
     }
 
     pub fn store(&mut self, varnum: usize, val: BCVal) {
-        let mut caller = self.current_fun_mut();
+        let caller = self.current_fun_mut();
         caller.store(varnum, val);
     }
 

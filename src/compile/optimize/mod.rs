@@ -147,7 +147,7 @@ impl BCUserFun {
         self.body = body.fold(vec![], |mut body, instr| {
             if instr.bc_type == BCType::Push {
                 if last_was_push {
-                    let mut last_part = body.last_mut()
+                    let last_part = body.last_mut()
                         .unwrap();
                     last_part.val
                         .as_mut()
