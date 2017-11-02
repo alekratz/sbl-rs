@@ -253,17 +253,42 @@ impl<'c> Parser<'c> {
         Ok(Block::new(tokens, block))
     }
 
+    fn expect_block_actions(&mut self) -> Result<BlockActions> {
+        let mut tokens = vec![];
+        let mut actions = vec![];
+        while !self.can_match_token(TokenType::LBrace) {
+            let action = if tokens.len() > 0 {
+                self.expect_stack_action().chain_err(|| tokens.range())
+            } else {
+                self.expect_stack_action()
+            }?;
+            tokens.append_node(&action);
+            actions.push(action);
+        }
+        Ok(BlockActions::new(tokens, actions))
+    }
+
     fn expect_loop_stmt(&mut self) -> Result<LoopStmt> {
         let mut tokens = vec![self.match_any(LoopStmt::lookaheads())?.into_rc()];
+        let actions = self.expect_block_actions()?;
+        tokens.append_node(&actions);
         let block = self.expect_block()?;
         tokens.append_node(&block);
-        Ok(LoopStmt::new(tokens, block))
+        Ok(LoopStmt::new(tokens, actions, block))
     }
 
     fn expect_br_stmt(&mut self) -> Result<BrStmt> {
         let mut tokens = vec![self.match_any(BrStmt::lookaheads())?.into_rc()];
+        let actions = self.expect_block_actions()?;
+        tokens.append_node(&actions);
         let block = self.expect_block()?;
         tokens.append_node(&block);
+        let mut elbr_stmts = vec![];
+        while self.can_match_any(ElBrStmt::lookaheads()) {
+            elbr_stmts.push(self.expect_elbr_stmt()?);
+        }
+        elbr_stmts.iter()
+            .for_each(|s| tokens.append_node(s));
         let el_stmt = if self.can_match_any(ElStmt::lookaheads()) {
             let el_stmt = self.expect_el_stmt()?;
             tokens.append_node(&el_stmt);
@@ -271,7 +296,11 @@ impl<'c> Parser<'c> {
         } else {
             None
         };
-        Ok(BrStmt::new(tokens, block, el_stmt))
+        Ok(BrStmt::new(tokens, actions, block, elbr_stmts, el_stmt))
+    }
+
+    fn expect_elbr_stmt(&mut self) -> Result<ElBrStmt> {
+        unimplemented!();
     }
 
     fn expect_el_stmt(&mut self) -> Result<ElStmt> {
@@ -417,9 +446,17 @@ mod test {
 
     macro_rules! stmt {
         (Stack $($tail:tt)* ) => { Stmt::Stack(stack_stmt!($($tail)*)) };
-        (Br { $($tail:tt)* } ) => { Stmt::Br(br_stmt!(($($tail)*))) };
-        (Br { $($br_tail:tt)* } El { $($el_tail:tt)* } ) => { Stmt::Br(br_stmt!(($($br_tail)*), ($($el_tail)*))) };
-        (Loop { $($tail:tt)* } ) => { Stmt::Loop(loop_stmt!($($tail)*)) };
+        (Br ( $($actions:tt)* ) { $($tail:tt)* } ) =>
+            { Stmt::Br(br_stmt!(($($actions)*), ($($tail)*))) };
+        (Br ( $($actions:tt)* ) { $($br_tail:tt)* } El { $($el_tail:tt)* } ) =>
+            { Stmt::Br(br_stmt!(($($actions)*), ($($br_tail)*), ($($el_tail)*))) };
+        (Loop ( $($actions:tt)* ) { $($tail:tt)* } ) => { Stmt::Loop(loop_stmt!(($($actions)*), ($($tail)*))) };
+    }
+
+    macro_rules! block_actions {
+        ( $($actions:tt)* ) => {
+            BlockActions::from(stack_stmt!($($actions)*))
+        };
     }
 
     macro_rules! block {
@@ -429,18 +466,18 @@ mod test {
     }
 
     macro_rules! loop_stmt {
-        ( $($block:tt)* ) => {
-            LoopStmt::new(vec![], block!($( $block )*))
+        ( ($($actions:tt)*), ($($block:tt)*) ) => {
+            LoopStmt::new(vec![], block_actions!($($actions)*), block!($( $block )*))
         }
     }
 
     macro_rules! br_stmt {
-        ( ( $($br_args:tt)* ), ( $($el_args:tt)* ) ) => {
-            BrStmt::new(vec![], block!($($br_args)*), Some(el_stmt!($($el_args)*)))
+        ( ( $($actions:tt)* ), ( $($br_args:tt)* ), ( $($el_args:tt)* ) ) => {
+            BrStmt::new(vec![], block_actions!($($actions)*), block!($($br_args)*), vec![], Some(el_stmt!($($el_args)*)))
         };
 
-        ( ( $($br_args:tt)* ) ) => {
-            BrStmt::new(vec![], block!($($br_args)*), None)
+        ( ( $($actions:tt)* ), ( $($br_args:tt)* ) ) => {
+            BrStmt::new(vec![], block_actions!($($actions)*), block!($($br_args)*), vec![], None)
         };
     }
 
@@ -451,21 +488,24 @@ mod test {
     }
 
     macro_rules! stack_stmt {
+        ($($args:tt)*) => {
+            StackStmt::new(vec![], stack_stmt_tail!(@ $($args)*))
+        };
+    }
+
+    macro_rules! stack_stmt_tail {
         (@ $which:ident Nil $($args:tt)*) => {{
-            let mut v = stack_stmt!(@ $($args)*);
+            let mut v = stack_stmt_tail!(@ $($args)*);
             v.insert(0, stack_action!($which Nil));
             v
         }};
         (@ $which:ident $i1:tt $i2:tt $($args:tt)*) => {{
-            let mut v = stack_stmt!(@ $($args)*);
+            let mut v = stack_stmt_tail!(@ $($args)*);
             v.insert(0, stack_action!($which $i1 $i2));
             v
         }};
         (@) => {
             vec![]
-        };
-        ($($args:tt)*) => {
-            StackStmt::new(vec![], stack_stmt!(@ $($args)*))
         };
     }
 
@@ -553,19 +593,19 @@ mod test {
                     Pop Int 2
                     Push Ident "f"
                     Pop Nil)
-                (Loop {
+                (Loop () {
                     (Stack Pop Nil
                            Push Ident "pop" Push Ident "^" Push Ident "println" Push Int 0 Push Ident "==")
                 })
-                (Br {
+                (Br () {
                     (Stack Push String "success" Push Ident "println")
-                    (Br {
+                    (Br () {
                         (Stack Push String "success message: " Push Ident "print" Push Ident "println")
                     })
                 }
                 El {
                     (Stack Push String "failure:" Push Ident "println")
-                    (Loop {
+                    (Loop () {
                         (Stack Push String "\t" Push Ident "print" Push Ident "println")
                     })
                 })
@@ -582,9 +622,8 @@ mod test {
 
             @ [1 2 3 4 5]
             a .a b .foo c .bar d .x e .2 f .@
-            loop {
-                .@
-                pop ^ println 0 ==
+            loop 0 == {
+                pop ^ println
             }
             br {
                 "success" println
@@ -615,20 +654,19 @@ mod test {
                     Push Ident "f"
                     Pop Nil
             ))
-            (expect_stmt, stmt!(Loop {
-                (Stack Pop Nil
-                       Push Ident "pop" Push Ident "^" Push Ident "println" Push Int 0 Push Ident "==")
+            (expect_stmt, stmt!(Loop (Push Int 0 Push Ident "==") {
+                (Stack Push Ident "pop" Push Ident "^" Push Ident "println")
             }))
             (expect_stmt, stmt!(
-                Br {
+                Br () {
                     (Stack Push String "success" Push Ident "println")
-                    (Br {
+                    (Br () {
                         (Stack Push String "success message: " Push Ident "print" Push Ident "println")
                     })
                 }
                 El {
                     (Stack Push String "failure:" Push Ident "println")
-                    (Loop {
+                    (Loop () {
                         (Stack Push String "\t" Push Ident "print" Push Ident "println")
                     })
                 }

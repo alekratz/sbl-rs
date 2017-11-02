@@ -287,7 +287,7 @@ impl ASTNode for Stmt {
     }
 
     fn lookaheads() -> &'static [TokenType] {
-        lookaheads!(StackStmt BrStmt ElStmt LoopStmt)
+        lookaheads!(StackStmt BrStmt LoopStmt)
     }
 }
 
@@ -456,6 +456,50 @@ macro_rules! block_stmt {
 
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
+pub struct BlockActions {
+    pub tokens: Tokens,
+    pub actions: Vec<StackAction>,
+}
+
+impl BlockActions {
+    pub fn new(tokens: Tokens, actions: Vec<StackAction>) -> Self {
+        BlockActions { tokens, actions }
+    }
+}
+
+#[cfg(test)]
+impl PartialEq for BlockActions {
+    fn eq(&self, other: &Self) -> bool {
+        self.actions == other.actions
+    }
+}
+
+#[cfg(test)]
+impl Debug for BlockActions {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "actions {{ {:?} }}", self.actions)
+    }
+}
+
+impl ASTNode for BlockActions {
+    fn tokens(&self) -> &[RcToken] {
+        &self.tokens
+    }
+
+    fn lookaheads() -> &'static [TokenType] {
+        StackAction::lookaheads()
+    }
+}
+
+impl From<StackStmt> for BlockActions {
+    fn from(other: StackStmt) -> Self {
+        let (tokens, actions) = (other.tokens, other.stack_actions);
+        BlockActions { tokens, actions }
+    }
+}
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct Block {
     pub tokens: Tokens,
     pub block: Vec<Stmt>,
@@ -469,13 +513,27 @@ block_stmt!(Block
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct BrStmt {
     pub tokens: Tokens,
+    pub actions: BlockActions,
     pub block: Block,
+    pub elbr_stmts: Vec<ElBrStmt>,
     pub el_stmt: Option<ElStmt>,
 }
 
 block_stmt!(BrStmt
-            new => (block: Block, el_stmt: Option<ElStmt>)
+            new => (actions: BlockActions, block: Block, elbr_stmts: Vec<ElBrStmt>, el_stmt: Option<ElStmt>)
             lookaheads => (TokenType::KwBr));
+
+#[derive(Clone)]
+#[cfg_attr(not(test), derive(PartialEq, Debug))]
+pub struct ElBrStmt {
+    pub tokens: Tokens,
+    pub actions: BlockActions,
+    pub block: Block,
+}
+
+block_stmt!(ElBrStmt
+            new => (actions: BlockActions, block: Block)
+            lookaheads => (TokenType::KwElBr));
 
 #[derive(Clone)]
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
@@ -492,11 +550,12 @@ block_stmt!(ElStmt
 #[cfg_attr(not(test), derive(PartialEq, Debug))]
 pub struct LoopStmt {
     pub tokens: Tokens,
+    pub actions: BlockActions,
     pub block: Block,
 }
 
 block_stmt!(LoopStmt
-            new => (block: Block)
+            new => (actions: BlockActions, block: Block)
             lookaheads => (TokenType::KwLoop));
 
 #[derive(Clone)]
