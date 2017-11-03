@@ -16,18 +16,23 @@ syn keyword sblForeignKeywords containedin=sblForeignBlock int string stack
 syn match sblForeignFunction '[a-zA-Z_][a-zA-Z_0-9]*' containedin=sblForeignBlock
 
 " Code blocks
-syn region sblBlock start='{' end='}' fold contains=sblKeywords,sblPop,sblComment,sblIdent,@sblLiteral
-syn keyword sblKeywords contained < > <= >= == !=
-syn keyword sblKeywords contained br el loop bake nextgroup=sblBlock skipwhite
+syn region sblBlock start='{' end='}' fold contains=sblBlock,@sblBody
+syn cluster sblBody contains=sblComment,sblIdent,sblBake,@sblLiteral,@sblKeywords
+syn cluster sblKeywords contains=sblCond,sblLoop,sblOps,sblNil,sblPop
+syn keyword sblCond contained br elbr el
+syn keyword sblLoop contained loop
+syn keyword sblOps contained < > <= >= == !=
+syn keyword sblBake contained bake nextgroup=sblBlock skipwhite
 syn match sblNil '@' contained
 syn match sblIdent '[a-zA-Z_!$%^&|*+/=<>]\+' contained
-syn match sblPop /\./ nextgroup=sblNil,sblNumber,sblIdent
+syn match sblPop /\./ contained nextgroup=sblNil,sblNumber,sblIdent
 
 " Literals and escapes
 syn cluster sblLiteral contains=sblString,sblChar,sblNumber,sblBool
 syn keyword sblEscapes contained \\n \\r \\s \\0 \\" \\'
 syn region sblString start=/"/ skip=/\\"/ end=/"/ contains=sblEscapes
-syn match sblChar "'." contains=sblEscapes
+syn match sblChar "'."
+syn match sblChar "'\\." contains=sblEscapes
 syn match sblNumber "-\?\(0[xXbBo]\)\?[0-9]\+"
 syn keyword sblBool T F
 
@@ -46,6 +51,7 @@ hi def link sblComment          Comment
 hi def link sblForeignLib       String
 hi def link sblString           String
 hi def link sblChar             Character
+hi def link sblEscapes          SpecialChar
 hi def link sblNumber           Number
 hi def link sblBool             Boolean
 
@@ -57,7 +63,10 @@ hi def link sblForeignFunction  Function
 " Keywords
 hi def link sblForeign          Keyword
 hi def link sblImportKeyword    Include
-hi def link sblKeywords         Keyword
+hi def link sblCond             Conditional
+hi def link sblLoop             Repeat
+hi def link sblOps              Operator
+hi def link sblBake             PreProc
 hi def link sblNil              Keyword
 
 " Types
