@@ -300,7 +300,12 @@ impl<'c> Parser<'c> {
     }
 
     fn expect_elbr_stmt(&mut self) -> Result<ElBrStmt> {
-        unimplemented!();
+        let mut tokens = vec![self.match_any(ElBrStmt::lookaheads())?.into_rc()];
+        let actions = self.expect_block_actions()?;
+        tokens.append_node(&actions);
+        let block = self.expect_block()?;
+        tokens.append_node(&block);
+        Ok(ElBrStmt::new(tokens, actions, block))
     }
 
     fn expect_el_stmt(&mut self) -> Result<ElStmt> {
@@ -447,9 +452,9 @@ mod test {
     macro_rules! stmt {
         (Stack $($tail:tt)* ) => { Stmt::Stack(stack_stmt!($($tail)*)) };
         (Br ( $($actions:tt)* ) { $($tail:tt)* } ) =>
-            { Stmt::Br(br_stmt!(($($actions)*), ($($tail)*))) };
-        (Br ( $($actions:tt)* ) { $($br_tail:tt)* } El { $($el_tail:tt)* } ) =>
-            { Stmt::Br(br_stmt!(($($actions)*), ($($br_tail)*), ($($el_tail)*))) };
+            { Stmt::Br(br_stmt!(($($actions)*), ($($tail)*) )) };
+        (Br ( $($actions:tt)* ) { $($br_tail:tt)* } $(ElBr ( $($elbr_actions:tt)* ) { $($elbr_tail:tt)* })* El { $($el_tail:tt)* } ) =>
+            { Stmt::Br(br_stmt!(($($actions)*), ($($br_tail)*), $(( ElBr ($($elbr_actions)*), ($($elbr_tail)*)),)* (El $($el_tail)*))) };
         (Loop ( $($actions:tt)* ) { $($tail:tt)* } ) => { Stmt::Loop(loop_stmt!(($($actions)*), ($($tail)*))) };
     }
 
@@ -472,13 +477,27 @@ mod test {
     }
 
     macro_rules! br_stmt {
-        ( ( $($actions:tt)* ), ( $($br_args:tt)* ), ( $($el_args:tt)* ) ) => {
-            BrStmt::new(vec![], block_actions!($($actions)*), block!($($br_args)*), vec![], Some(el_stmt!($($el_args)*)))
+        ( ( $($actions:tt)* ), ( $($br_args:tt)* ), $(( ElBr $($elbr_args:tt)+ ),)* ( El $($el_args:tt)* ) ) => {
+            BrStmt::new(
+                vec![],
+                block_actions!($($actions)*),
+                block!($($br_args)*),
+                vec![ $( elbr_stmt!($($elbr_args)+) ),* ],
+                Some(el_stmt!($($el_args)*)))
         };
 
         ( ( $($actions:tt)* ), ( $($br_args:tt)* ) ) => {
-            BrStmt::new(vec![], block_actions!($($actions)*), block!($($br_args)*), vec![], None)
+            BrStmt::new(
+                vec![],
+                block_actions!($($actions)*),
+                block!($($br_args)*),
+                vec![],
+                None)
         };
+    }
+
+    macro_rules! elbr_stmt {
+        ( ( $($actions:tt)* ), ($($block:tt)*) ) => { ElBrStmt::new(vec![], block_actions!($($actions)*), block!($($block)*)) };
     }
 
     macro_rules! el_stmt {
@@ -554,9 +573,12 @@ mod test {
                 }
                 br {
                     "success" println
-                    br {
+                    br msg {
                         "success message: " print println
                     }
+                }
+                elbr partial_success {
+                    "partial success" println
                 }
                 el {
                     "failure:" println
@@ -599,9 +621,12 @@ mod test {
                 })
                 (Br () {
                     (Stack Push String "success" Push Ident "println")
-                    (Br () {
+                    (Br (Push Ident "msg") {
                         (Stack Push String "success message: " Push Ident "print" Push Ident "println")
                     })
+                }
+                ElBr (Push Ident "partial_success") {
+                    (Stack Push String "partial success" Push Ident "println")
                 }
                 El {
                     (Stack Push String "failure:" Push Ident "println")
