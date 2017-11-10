@@ -63,8 +63,6 @@ You can check out the grammar in [GRAMMAR.md](GRAMMAR.md).
 # Features
 * Terse syntax
 * [Tacit-style programming](https://en.wikipedia.org/wiki/Tacit_programming)
-* Branches
-* Loops
 * Recursive functions
 * Order-agnostic function definition
 * Simple, LL(0) grammar
