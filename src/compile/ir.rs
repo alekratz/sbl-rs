@@ -255,15 +255,7 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                             body.append(&mut block_compiler.compile()?);
                         }
 
-                        if br.el_stmt.is_none() && br.elbr_stmts.is_empty() {
-                            // If there's no el or elbr statements, they won't fill in the
-                            // last_jump. This portion adds the label and fills in the jump
-                            // for us.
-                            let jmp_label = IRVal::Int(*self.label_offset as i64);
-                            body[last_jump] = IR::jmpz(br.tokens().into(), jmp_label.clone());
-                            body.push(IR::label(br.tokens().into(), jmp_label));
-                            *self.label_offset += 1;
-                        } else {
+                        if br.el_stmt.is_some() || !br.elbr_stmts.is_empty() {
                             // Add a placeholder for the exit jump, and add the exit jump address to
                             // the list
                             let exit_addr = body.len();
@@ -314,6 +306,13 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                             );
                             body.append(&mut block_compiler.compile()?);
                         }
+                    } else {
+                        // If there's no el statement, it won't fill in the last_jump.
+                        // This portion adds the label and fills in the jump for us.
+                        let jmp_label = IRVal::Int(*self.label_offset as i64);
+                        body[last_jump] = IR::jmpz(br.tokens().into(), jmp_label.clone());
+                        body.push(IR::label(br.tokens().into(), jmp_label));
+                        *self.label_offset += 1;
                     }
                     // Create the exit label and fill in all exit jump instructions
                     let exit_label = IRVal::Int(*self.label_offset as i64);
@@ -322,6 +321,10 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                         body[jmp_addr] = IR::jmp(br.tokens().into(), exit_label.clone());
                     }
                     *self.label_offset += 1;
+                    // Make sure that there are no NOPs in the debug build from where we started to
+                    // where we finished
+                    debug_assert!(!body.iter().skip(start).any(|i| i.ir_type == IRType::Nop),
+                        "Found NOPs after building BR/ELBR/BR statement! This is a compiler bug!");
                 }
                 Stmt::Loop(ref lp) => {
                     //
@@ -359,6 +362,8 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                         jmp_label.clone()
                     );
                     body.push(IR::label(lp.tokens().into(), jmp_label.clone()));
+                    debug_assert!(!body.iter().skip(start).any(|i| i.ir_type == IRType::Nop),
+                        "Found NOPs after building LOOP statement! This is a compiler bug!");
                 }
                 Stmt::Bake(ref block) => {
                     //
