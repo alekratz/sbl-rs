@@ -70,6 +70,11 @@ impl State {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.stack.clear();
+        self.call_stack.clear();
+    }
+
     pub fn load(&self, varnum: usize) -> Result<&BCVal> {
         let caller = self.current_fun();
         caller.load(varnum)
@@ -266,6 +271,13 @@ impl VM {
         Ok(())
     }
 
+    /// Clears the VM state. This is primarily used by bake blocks so they can reuse the same VM
+    /// without retaining the effects of the previous bake block.
+    pub fn clear_state(&self) {
+        let mut state = self.state.borrow_mut();
+        state.clear();
+    }
+
     /// Prints out the VM state to the command line.
     /// Useful for crash reports.
     pub fn dump_state(&self) {
@@ -350,10 +362,10 @@ impl VM {
                     BCType::JmpZ => {
                         let mut state = self.state.borrow_mut();
                         let jump_taken = {
-                            let tos = state.peek()?;
+                            let tos = state.pop()?;
                             match tos {
-                                &BCVal::Bool(false) |
-                                &BCVal::Nil => true,
+                                BCVal::Bool(false) |
+                                BCVal::Nil => true,
                                 _ => false,
                             }
                         };
@@ -373,10 +385,10 @@ impl VM {
                     BCType::SymJmpZ => {
                         let mut state = self.state.borrow_mut();
                         let jump_taken = {
-                            let tos = state.peek()?;
+                            let tos = state.pop()?;
                             match tos {
-                                &BCVal::Bool(false) |
-                                &BCVal::Nil => true,
+                                BCVal::Bool(false) |
+                                BCVal::Nil => true,
                                 _ => false,
                             }
                         };

@@ -4,12 +4,10 @@
 # Reverses a local stack
 !reverse {
     [] .st
-    ^len 0 > loop {
-        .@
+    loop ^len 0 > {
         ^pop
         .popped st popped ^push
         .st
-        ^len 0 >
     }
     .2
     st
@@ -34,12 +32,12 @@
 !concat {
     .first .second
     second !reverse .second
-    second !len 0 > loop {
-        .@
+    second
+    loop !len 0 > {
         second ^pop
         .item .second first item ^push
-        .first second !len 0 >
+        .first second
     }
-    .@
     first
 }
+

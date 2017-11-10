@@ -18,18 +18,12 @@ write-string {
     0o644 O_CREAT O_TRUNC |
     O_WRONLY | fname open
     ^ .fd
-    0 < br {
-        .@ F
-    }
+    br 0 < { F }
     el {
-        .@ 
         str !len str fd write
-        0 <
-        br {
-            .@ F
-        }
+        br 0 < { F }
         el {
-            .@ fd close
+            fd close
             0 ==
         }
     }

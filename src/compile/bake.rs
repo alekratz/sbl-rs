@@ -35,6 +35,7 @@ impl BakeIRFunTable {
                 let mut compiled = self.compile_ir_body(ir_body)?;
                 compiled.push(BC::ret(tokens.clone()));
                 let mut vm = self.vm.borrow_mut();
+                vm.clear_state();
                 vm.inject_user_fun(BCUserFun::new(format!("<bake block at {}>", tokens.range()), compiled, tokens.clone(), locals))?;
                 let state: State = vm.clone()
                     .into();
@@ -59,15 +60,6 @@ impl Compile for BakeIRFunTable {
     type Out = BCFunTable;
     fn compile(self) -> Result<Self::Out> {
         // Build the boring table
-        /*
-        let ir_boring_table = self.ir_fun_table
-            .clone()
-            .into_iter()
-            .map(|(k, v)| (k, Some(v)))
-            .collect::<BTreeMap<_, _>>();
-            */
-
-
         let mut dep_order = match toposort(&self.bake_graph, None) {
             Err(cycle) => {
                 return Err(format!("bake call cycle detected in function `{}`", &self.bake_graph[cycle.node_id()]).into());
@@ -98,6 +90,8 @@ impl Compile for BakeIRFunTable {
                 Ok(userfun)
             }).collect::<Vec<_>>();
         if baked_funs.iter().any(Result::is_err) {
+            // TODO : error lists, so we can get all errors with baked functions and not just the
+            // first one
             Err(baked_funs.into_iter().find(Result::is_err)
                 .unwrap()
                 .unwrap_err())
