@@ -199,6 +199,10 @@ impl VM {
         self.fun_table.insert(name, Rc::new(fun));
     }
 
+    pub fn state(&self) -> ::std::cell::Ref<State> {
+        self.state.borrow()
+    }
+
     pub fn run(&mut self) -> Result<()> {
         // Load all of the foreign functions
         for f in self.fun_table.iter().filter_map(|(_, f)| {
