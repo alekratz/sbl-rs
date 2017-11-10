@@ -335,6 +335,7 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                     //      jmp a
                     // b:
                     //
+                    let start = body.len();
                     // Create the initial label
                     *self.label_offset += 1;
                     let jmp_label = IRVal::Int(*self.label_offset as i64);
