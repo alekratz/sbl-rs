@@ -17,7 +17,8 @@ macro_rules! state_test {
         let fun_table = bc_compiler.compile().expect("BC compile error");
         let mut vm = VM::new(fun_table);
         vm.run().expect("Runtime error");
-        assert_eq!(vm.state().stack, $expected);
+        let state: State = vm.into();
+        assert_eq!(state.stack, $expected);
     }}
 }
 // TODO
@@ -61,6 +62,17 @@ fn test_br_el() {
 
 #[test]
 fn test_br_elbr() {
+    // Rudimentary elbr tests
+    state_test!("main { br T { 9999 } elbr T { 8888 } }", vec![BCVal::Int(9999)]);
+    state_test!("main { br F { 9999 } elbr T { 8888 } }", vec![BCVal::Int(8888)]);
+    state_test!("main { br 7777 T { 9999 } elbr T { 8888 } }", vec![BCVal::Int(7777), BCVal::Int(9999)]);
+    state_test!("main { br 7777 F { 9999 } elbr T { 8888 } }", vec![BCVal::Int(7777), BCVal::Int(8888)]);
+    state_test!("main { br T { 9999 } elbr 7777 T { 8888 } }", vec![BCVal::Int(9999)]);
+    state_test!("main { br F { 9999 } elbr 7777 T { 8888 } }", vec![BCVal::Int(7777), BCVal::Int(8888)]);
+    // Nested statements
+    state_test!("main { br T { 9999 } elbr T { br T { 7777 } elbr T { 6666 } } }", vec![BCVal::Int(9999)]);
+    state_test!("main { br F { 9999 } elbr T { br T { 7777 } elbr T { 6666 } } }", vec![BCVal::Int(7777)]);
+    state_test!("main { br F { 9999 } elbr T { br F { 7777 } elbr T { 6666 } } }", vec![BCVal::Int(6666)]);
 }
 
 #[test]
