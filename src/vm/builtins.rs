@@ -22,7 +22,7 @@ lazy_static! {
 
             // Stack functions
             "^" => tos,
-            "$" => stack_size,
+            "#" => stack_size,
 
             // Local stack functions
             "^push" => push,

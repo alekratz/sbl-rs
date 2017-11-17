@@ -22,19 +22,19 @@ cube { ^ ^ * * }
 
 test-numbers {
     1 2 3 4 5
-    loop $ 0 > {
+    loop # 0 > {
         ^print " factorial is " !print
         fact !println
     }
 
     1 2 3 4 5
-    loop $ 0 > {
+    loop # 0 > {
         ^print " squared is " !print
         square !println
     }
     
     -1 -2 -3 -4 -5
-    loop $ 0 > {
+    loop # 0 > {
         cube "cube is " !print !println
     }
 
@@ -47,7 +47,7 @@ test-numbers {
 
 test-printing {
     '\n 'o 'l 'l 'e 'h
-    loop $ 0 > { !print }
+    loop # 0 > { !print }
     "world!" !println
 }
 
@@ -189,9 +189,9 @@ run-tests {
 
     "\n==========\n" !println
 
-    $ !print " items leftover on the stack: " !println
+    # !print " items leftover on the stack: " !println
     
-    loop $ 0 > {
+    loop # 0 > {
         "   " !print !println
     }
 

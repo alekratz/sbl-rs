@@ -36,7 +36,7 @@ lazy_static! {
     };
 
 }
-const IDENT_CHARS: &str = "_!@$%^&|*-+/=<>abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const IDENT_CHARS: &str = "_!@#%^&|*-+/=<>abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 #[derive(Eq, Hash, PartialEq, Copy, Clone, Debug)]
 pub enum TokenType {
