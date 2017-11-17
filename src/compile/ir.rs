@@ -269,6 +269,7 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                         for elbr_stmt in &br.elbr_stmts {
                             // Create the label for the last jump to jump to
                             let jmp_label = IRVal::Int(*self.label_offset as i64);
+                            *self.label_offset += 1;
                             body.push(IR::label(elbr_stmt.tokens().into(), jmp_label.clone()));
                             // Update the last jump instruction to point at the label
                             body[last_jump] = IR::jmpz(last_jump_tokens, jmp_label);
@@ -282,7 +283,6 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                                 let block_compiler = CompileIRBlock::new(self.fun_table, &elbr_stmt.block, self.label_offset);
                                 body.append(&mut block_compiler.compile()?);
                             }
-                            *self.label_offset += 1;
                             let exit_addr = body.len();
                             body.push(IR::nop());
                             exit_jumps.push(exit_addr);
@@ -310,17 +310,17 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                         // If there's no el statement, it won't fill in the last_jump.
                         // This portion adds the label and fills in the jump for us.
                         let jmp_label = IRVal::Int(*self.label_offset as i64);
+                        *self.label_offset += 1;
                         body[last_jump] = IR::jmpz(br.tokens().into(), jmp_label.clone());
                         body.push(IR::label(br.tokens().into(), jmp_label));
-                        *self.label_offset += 1;
                     }
                     // Create the exit label and fill in all exit jump instructions
                     let exit_label = IRVal::Int(*self.label_offset as i64);
+                    *self.label_offset += 1;
                     body.push(IR::label(br.tokens().into(), exit_label.clone()));
                     for jmp_addr in exit_jumps {
                         body[jmp_addr] = IR::jmp(br.tokens().into(), exit_label.clone());
                     }
-                    *self.label_offset += 1;
                     // Make sure that there are no NOPs in the debug build from where we started to
                     // where we finished
                     debug_assert!(!body.iter().skip(start).any(|i| i.ir_type == IRType::Nop),
@@ -337,8 +337,8 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                     //
                     let start = body.len();
                     // Create the initial label
-                    *self.label_offset += 1;
                     let jmp_label = IRVal::Int(*self.label_offset as i64);
+                    *self.label_offset += 1;
                     body.push(IR::label(lp.tokens().into(), jmp_label.clone()));
                     // Push any body actions
                     body.append(&mut self.compile_stack_actions(&lp.actions.actions)?);
@@ -356,8 +356,8 @@ impl<'ft, 'b, 'l> Compile for CompileIRBlock<'ft, 'b, 'l> {
                     // Create the jump to the next check
                     body.push(IR::jmp(lp.tokens().into(), jmp_label));
                     // Create the label and fill in the previous jump
-                    *self.label_offset += 1;
                     let jmp_label = IRVal::Int(*self.label_offset as i64);
+                    *self.label_offset += 1;
                     body[jmp_addr] = IR::jmpz(
                         lp.tokens().into(),
                         jmp_label.clone()
