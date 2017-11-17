@@ -1,9 +1,9 @@
 foreign "libc.so.6" {
     int open [ string int int ]
     int write [ int string int ]
-    # int read [ int stack ]
+    ; int read [ int stack ]
     int close [ int ]
-    # void perror [ string ]
+    ; void perror [ string ]
     int unlink [ string ]
 }
 
@@ -12,7 +12,7 @@ O_WRONLY { 0o1 }
 O_CREAT { 0o100 }
 O_TRUNC { 0o1000 }
 
-# Writes a single string to a file
+; Writes a single string to a file
 write-string {
     .fname .str
     0o644 O_CREAT O_TRUNC |
@@ -29,7 +29,7 @@ write-string {
     }
 }
 
-# Writes all strings to a file, until the nil sigil is reached.
-write-lines { #! TODO !# }
+; Writes all strings to a file, until the nil sigil is reached.
+write-lines { ;! TODO !; }
 
-# 
+; 

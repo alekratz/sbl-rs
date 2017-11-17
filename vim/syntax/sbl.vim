@@ -38,8 +38,8 @@ syn keyword sblBool T F
 
 " Comments
 syn match sblTodo contained "TODO" "FIXME" "XXX" "NOTE"
-syn match sblComment "#.*$" contains=sblTodo
-syn region sblComment start="#!" end="!#" contains=sblTodo
+syn match sblComment ";.*$" contains=sblTodo
+syn region sblComment start=";!" end="!;" contains=sblTodo
 
 let b:current_syntax = "sbl"
 

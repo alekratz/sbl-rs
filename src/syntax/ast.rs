@@ -377,7 +377,7 @@ impl StackStmt {
 
 impl ASTNode for StackStmt {
     fn lookaheads() -> &'static [TokenType] {
-        lookaheads!(StackAction TokenType::Semi)
+        lookaheads!(StackAction)
     }
 
     fn tokens(&self) -> &[RcToken] {

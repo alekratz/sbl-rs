@@ -1,7 +1,7 @@
-# basic.sbl
-# Basic language functions
+; basic.sbl
+; Basic language functions
 
-# Reverses a local stack
+; Reverses a local stack
 !reverse {
     [] .st
     loop ^len 0 > {
@@ -13,7 +13,7 @@
     st
 }
 
-#!
+;!
 !reverse {
     [] .rev
     ^len 0 > loop {
@@ -26,9 +26,9 @@
     .@
     rev
 }
-!#
+!;
 
-# Concatenates two local stacks
+; Concatenates two local stacks
 !concat {
     .first .second
     second !reverse .second

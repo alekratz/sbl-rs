@@ -1,19 +1,19 @@
-# Example program
+; Example program
 import "basic.sbl"
 import "io.sbl"
 
-# factorial
+; factorial
 fact {
-    # duplicate and compare to zero
+    ; duplicate and compare to zero
     br ^ 0 == {
-        # pop off to nothing, and push a 1
+        ; pop off to nothing, and push a 1
         .@ 1
     }
     el {
-        .x       # pop into x
-        x 1 -    # push a copy and subtract 1 from it
-        fact     # call factorial
-        x *      # multiply whatever our factorial is by x
+        .x       ; pop into x
+        x 1 -    ; push a copy and subtract 1 from it
+        fact     ; call factorial
+        x *      ; multiply whatever our factorial is by x
     }
 }
 
@@ -65,7 +65,7 @@ test-booleans {
 }
 
 test-stacks {
-    # do weird things with internal stacks
+    ; do weird things with internal stacks
     12 .a 34 .b
     [a b] .c [c 555 [1 2 3]] !println
 
@@ -92,14 +92,14 @@ test-stacks {
     "" !println
 
     "Here's a number, \"spelled\" out with individual characters from a local stack:" !println
-    [ '9 '5 '1 '4 '1 '. '3 ]  # create a stack with some characters
+    [ '9 '5 '1 '4 '1 '. '3 ]  ; create a stack with some characters
     loop ^len 0 > {
-        ^pop !print  # pop the top item off the local stack, and print it
+        ^pop !print  ; pop the top item off the local stack, and print it
     }
-    .@ "" !println  # discard empty stack and print a newline
+    .@ "" !println  ; discard empty stack and print a newline
 
-    # Yo dawg, I heard you like stacks, so we put stacks in your stacks so you
-    # can stack while you stack
+    ; Yo dawg, I heard you like stacks, so we put stacks in your stacks so you
+    ; can stack while you stack
     [
         [1 2]
         [1 3]
@@ -107,7 +107,7 @@ test-stacks {
     ]
     "these are the coordinates:" !println
     loop ^len 0 > {
-        ^pop  # get the coordinate
+        ^pop  ; get the coordinate
             ^pop !print
             ", " !print
             ^pop !print
@@ -116,12 +116,12 @@ test-stacks {
     }
     .@ "" !println
 
-    [ '3 '. '1 '4 '1 '5 '9 ]  # create a stack with some characters
-    # reverse, reverse
+    [ '3 '. '1 '4 '1 '5 '9 ]  ; create a stack with some characters
+    ; reverse, reverse
     "this string is being printed out in reverse: " !println
     !reverse
     loop ^len 0 > {
-        ^pop !print  # pop the top item off the local stack, and print it
+        ^pop !print  ; pop the top item off the local stack, and print it
     }
     .@ "" !println
 

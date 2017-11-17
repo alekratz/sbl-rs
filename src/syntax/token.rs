@@ -52,7 +52,6 @@ pub enum TokenType {
 
     // Symbols
     Dot,
-    Semi,
     LBrace,
     RBrace,
     LBrack,
@@ -85,7 +84,6 @@ impl Display for TokenType {
 
             // Symbols
             Dot => "dot",
-            Semi => "semicolon",
             LBrace => "lbrace",
             RBrace => "rbrace",
             LBrack => "lbrack",
@@ -360,14 +358,14 @@ impl<'c> Tokenizer<'c> {
 
     /// Attempts to match a comment.
     fn next_comment(&mut self) -> Result<Token> {
-        self.match_char('#')?;
+        self.match_char(';')?;
         if self.curr == Some('!') {
             self.next_char();
-            while !(self.curr == Some('!') && self.next == Some('#')) {
+            while !(self.curr == Some('!') && self.next == Some(';')) {
                 self.next_char();
             }
             self.match_char('!')?;
-            self.match_char('#')?; // skip past the !#
+            self.match_char(';')?; // skip past the !;
         } else {
             while self.curr.is_some() && self.curr != Some('\n') {
                 self.next_char();
@@ -512,7 +510,7 @@ impl<'c> Iterator for Tokenizer<'c> {
 
         match self.curr.unwrap() {
             // comment
-            '#' => Some(self.next_comment()),
+            ';' => Some(self.next_comment()),
             // negative integer
             '-' if self.next.map(|c| c.is_digit(10)).unwrap_or(false) => Some(self.next_int()),
             // positive integer
@@ -531,8 +529,6 @@ impl<'c> Iterator for Tokenizer<'c> {
             '[' => Some(self.match_single_token('[', TokenType::LBrack)),
             // rbrack
             ']' => Some(self.match_single_token(']', TokenType::RBrack)),
-            // semicolon
-            ';' => Some(self.match_single_token(';', TokenType::Semi)),
             // try for an identifier
             _ => Some(self.next_identifier()),
         }
@@ -633,14 +629,13 @@ mod test {
     fn test_lexer_syms() {
         tests! {
             r#"
-            . [ ] { } ;
+            . [ ] { }
             "#,
             (TokenType::Dot)
             (TokenType::LBrack)
             (TokenType::RBrack)
             (TokenType::LBrace)
             (TokenType::RBrace)
-            (TokenType::Semi)
         };
     }
 
@@ -733,16 +728,16 @@ mod test {
     fn test_lexer_comments() {
         tests! {
             r#"
-            # this is a comment
-            # this is a comment, too
-            # foo, bar, baz
-            #! this is a comment !#
-            #! this is a comment too !#
-            #!
-            * foo
-            * bar
-            * baz
-            !#"#,
+            ; this is a comment
+            ; this is a comment, too
+            ; foo, bar, baz
+            ;! this is a comment !;
+            ;! this is a comment too !;
+            ;!
+                * foo
+                * bar
+                * baz
+            !;"#,
 
             (TokenType::Comment)
             (TokenType::Comment)

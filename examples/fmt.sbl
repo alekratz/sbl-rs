@@ -1,23 +1,23 @@
 import "basic.sbl"
 
-# string.sbl
-# String manipulation functions
+; string.sbl
+; String manipulation functions
 
-# Format delimeter constant
+; Format delimeter constant
 FMT_DELIM { "%" }
 
-# Formats a string. Expects a string, and then a list of items. Each item on
-# top of the stack gets formatted until there is nothing left to format in the
-# string.
+; Formats a string. Expects a string, and then a list of items. Each item on
+; top of the stack gets formatted until there is nothing left to format in the
+; string.
 !fmt {
     .str
 }
 
-# Takes a string, and splits it along a given delimiter.
-# This function returns a local stack.
+; Takes a string, and splits it along a given delimiter.
+; This function returns a local stack.
 !split {
     .needle .haystack
-    # gets the first instance of thist string
+    ; gets the first instance of thist string
     haystack needle !first
     ^. first
     -1 == br {
@@ -28,12 +28,12 @@ FMT_DELIM { "%" }
     }
 }
 
-# Finds the first instance of a substring in a given string
+; Finds the first instance of a substring in a given string
 !first {
     .needle .haystack
 }
 
-# Creates a substring, from a given index to the end of an index
+; Creates a substring, from a given index to the end of an index
 !substr {
 }
 
