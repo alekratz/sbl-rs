@@ -146,8 +146,8 @@ class ElBrStmt(Emit):
     def emit(self):
         '''Generates tthe SBL code for this statement.'''
         return 'elbr {cond} {{ {body} }}'.format(
-                cond=map(' '.join(Emit.dispatch, self.cond)),
-                body=map(' '.join(Emit.dispatch, self.body)))
+                cond=' '.join(map(Emit.dispatch, self.cond)),
+                body=' '.join(map(Emit.dispatch, self.body)))
 
     def ensure_tree(self):
         self.cond = self._ensure_tree(self.cond)
@@ -205,9 +205,9 @@ class BrStmt(Emit, Flow):
             done = False
             for elbr in self.elbr:
                 st += flow(elbr.cond)
-                check_stack()
+                check_stack(st)
                 top = st.pop()
-                if top:
+                if top.is_true():
                     st += flow(elbr.body)
                     done = True
                     break
@@ -244,6 +244,13 @@ def permute_br(pre=[], cond=[], body=[], elbr=[], el=[], post=[], filt=lambda _:
                        powerset(post)))))
 
 
+def permute_elbr(cond=[], body=[], filt=lambda _:True):
+    '''Permutes through all solo branch possibilities with a handful of arguments.'''
+    return filter(filt, map(lambda a: ElBrStmt(*a),
+               product(powerset(cond),
+                       powerset(body))))
+
+
 def permute_el(body=[], filt=lambda _:True):
     '''Permutes through all solo branch possibilities with a handful of arguments.'''
     return filter(filt, map(lambda a: ElStmt(a), powerset(body)))
@@ -260,7 +267,6 @@ def generate_br_solo():
                        post=[8765],
                        filt=lambda x: bool(x.body)))
     outer = list(permute_br(cond=[1111, True, False]))
-
     for obr in outer:
         for ibr in inner:
             obr.body = [ibr]
@@ -278,11 +284,30 @@ def generate_br_el():
                        el=permute_el(body=[3333], filt=el_filt),
                        filt=br_filt))
     outer = list(permute_br(cond=[1111, True, False]))
+    for obr in outer:
+        for ibr in inner:
+            obr.body = [ibr]
+            obr.el = ElStmt([ibr])
+            print(obr.remit())
 
+
+def generate_br_elbr():
+    '''Generate br { ... } elbr { ... } statement tests'''
+    br_filt = lambda x: bool(x.body) and bool(x.elbr) and len(x.cond) == 1
+    elbr_filt = lambda x: bool(x.body) and len(x.cond) == 1
+    elbr = list(permute_elbr(cond=[True, False], body=[4444], filt=elbr_filt))
+    inner = list(permute_br(pre=[5678],
+                       cond=[True, False],
+                       body=[2222],
+                       post=[8765],
+                       elbr=elbr,
+                       filt=br_filt))
+    outer = list(permute_br(cond=[1111, True, False]))
     for obr in outer:
         for ibr in inner:
             obr.body = [ibr]
             print(obr.remit())
+
 
 ################################################################################
 # Main function
@@ -295,7 +320,7 @@ def main():
     genmap = {
         'br_solo': generate_br_solo,
         'br_el': generate_br_el,
-        'br_elbr': unimp,
+        'br_elbr': generate_br_elbr,
         'br_elbr_el': unimp,
     }
     def show_usage():
