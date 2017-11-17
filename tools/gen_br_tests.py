@@ -10,6 +10,10 @@ import sys
 from itertools import chain, combinations, product
 
 
+################################################################################
+# Utility functions and errors
+################################################################################
+
 class EmptyStackError(Exception):
     '''Gets raised during control flow diagram creation, if a control flow would end with an empty stack.'''
     def __init__(self, sender, *args, **kwargs):
@@ -75,6 +79,10 @@ class Flow(metaclass=abc.ABCMeta):
         return sum(map(Flow.dispatch, ls), [])
 
 
+################################################################################
+# Statements
+################################################################################
+
 class Push(Emit, Flow):
     '''
     A single push statement. Its value can be any valid SBL value.
@@ -118,11 +126,12 @@ class Push(Emit, Flow):
 
 
 class ElStmt(Emit):
-    def __init__(self, body: Sequence[Emit]): self.body = body
+    def __init__(self, body: Sequence[Emit]):
+        self.body = body
 
     def emit(self):
         '''Generates tthe SBL code for this statement.'''
-        return 'el {{ {body} }}'.format(body=' '.join(map(Emit.dispatch, body)))
+        return 'el {{ {body} }}'.format(body=' '.join(map(Emit.dispatch, self.body)))
 
     def ensure_tree(self):
         self.body = self._ensure_tree(self.body)
@@ -148,8 +157,7 @@ class ElBrStmt(Emit):
 
 class BrStmt(Emit, Flow):
     def __init__(self, pre: Sequence[Emit], cond: Sequence[Push], body: Sequence[Emit], elbr: Sequence[ElBrStmt], el: Optional[ElStmt], post: Sequence[Emit]):
-        if not isinstance(el, ElStmt):
-            el = None
+        assert isinstance(el, ElStmt) or el is None, 'el must be ElStmt or None, instead got {}'.format(type(el))
         self.pre = pre
         self.cond = cond
         self.body = body
@@ -164,7 +172,7 @@ class BrStmt(Emit, Flow):
                 cond=' '.join(map(Emit.dispatch, self.cond)),
                 body=' '.join(map(Emit.dispatch, self.body)),
                 elbr=' '.join(map(Emit.dispatch, self.elbr)),
-                el=self.el.emit if self.el else '',
+                el = self.el.emit() if self.el else '',
                 post=' '.join(map(Emit.dispatch, self.post))).strip().replace('  ', ' ')
 
     def remit(self):
@@ -177,7 +185,7 @@ class BrStmt(Emit, Flow):
         self.cond = self._ensure_tree(self.cond)
         self.body = self._ensure_tree(self.body)
         self.elbr = self._ensure_tree(self.elbr)
-        self.el = self._ensure_tree(self.el) if self.el is not None else None
+        self.el = ElStmt(self._ensure_tree(self.el.body)) if self.el is not None else None
         self.post = self._ensure_tree(self.post)
         return self
 
@@ -212,8 +220,9 @@ class BrStmt(Emit, Flow):
         return "pre={} cond={} body={} elbr={} el={} post={}".format(
                 self.pre, self.cond, self.body, self.elbr, self.el, self.post)
 
-
+################################################################################
 # Permutation functions
+################################################################################
 
 def permute_el(body=[]):
     return map(lambda a: ElStmt(*a), product(powerset(body)))
@@ -231,25 +240,53 @@ def permute_br(pre=[], cond=[], body=[], elbr=[], el=[], post=[], filt=lambda _:
                        powerset(cond),
                        powerset(body),
                        powerset(elbr),
-                       powerset(el),
+                       map(lambda t: t[0] if len(t) > 0 else None, powerset(el)),
                        powerset(post)))))
 
+
+def permute_el(body=[], filt=lambda _:True):
+    '''Permutes through all solo branch possibilities with a handful of arguments.'''
+    return filter(filt, map(lambda a: ElStmt(a), powerset(body)))
+
+################################################################################
+# Code generation functions
+################################################################################
+
 def generate_br_solo():
-    inner = permute_br(pre=[5678],
+    '''Generate solo br statement tests'''
+    inner = list(permute_br(pre=[5678],
                        cond=[True, False],
                        body=[2222],
-                       post=[8765], filt=lambda x: bool(x.body))
-    outer = permute_br(cond=[1111, True, False])
-                       #body=filter(Flow.dispatch, inner))
+                       post=[8765],
+                       filt=lambda x: bool(x.body)))
+    outer = list(permute_br(cond=[1111, True, False]))
 
-    # Let's generate some code
-
-    outer = list(outer)
-    inner = list(inner)
     for obr in outer:
         for ibr in inner:
             obr.body = [ibr]
             print(obr.remit())
+
+
+def generate_br_el():
+    '''Generate br { ... } el { ... } statement tests'''
+    br_filt = lambda x: bool(x.body) and bool(x.el)
+    el_filt = lambda x: bool(x.body)
+    inner = list(permute_br(pre=[5678],
+                       cond=[True, False],
+                       body=[2222],
+                       post=[8765],
+                       el=permute_el(body=[3333], filt=el_filt),
+                       filt=br_filt))
+    outer = list(permute_br(cond=[1111, True, False]))
+
+    for obr in outer:
+        for ibr in inner:
+            obr.body = [ibr]
+            print(obr.remit())
+
+################################################################################
+# Main function
+################################################################################
 
 def main():
     '''Program entry point'''
@@ -257,7 +294,7 @@ def main():
     unimp = lambda: print("UNIMPLEMENTED, PLEASE CALL 1-800-R-U-SLAPPIN FOR ASSISTANCE")
     genmap = {
         'br_solo': generate_br_solo,
-        'br_el': unimp,
+        'br_el': generate_br_el,
         'br_elbr': unimp,
         'br_elbr_el': unimp,
     }
