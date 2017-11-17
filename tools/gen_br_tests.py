@@ -292,12 +292,12 @@ def generate_br_el():
 
 
 def generate_br_elbr():
-    '''Generate br { ... } elbr { ... } statement tests'''
-    br_filt = lambda x: bool(x.body) and bool(x.elbr) and len(x.cond) == 1
+    '''Generate br { ... } elbr { ... } ... statement tests'''
+    br_filt = lambda x: bool(x.body) and len(x.cond) == 1
     elbr_filt = lambda x: bool(x.body) and len(x.cond) == 1
     elbr = list(permute_elbr(cond=[True, False], body=[4444], filt=elbr_filt))
     inner = list(permute_br(pre=[5678],
-                       cond=[True, False],
+                       cond=[True, False, True],
                        body=[2222],
                        post=[8765],
                        elbr=elbr,
@@ -306,6 +306,36 @@ def generate_br_elbr():
     for obr in outer:
         for ibr in inner:
             obr.body = [ibr]
+            # Add a list of elbrs to the end if there aren't any in the body
+            if not ibr.elbr:
+                obr.elbr = elbr
+            print(obr.remit())
+
+
+def generate_br_elbr_el():
+    '''Generate br { ... } elbr { ... } ... el { ... } statement tests'''
+    br_filt =   lambda x: bool(x.body) and len(x.cond) == 1
+    elbr_filt = lambda x: bool(x.body) and len(x.cond) == 1
+    el_filt =   lambda x: bool(x.body)
+    elbr = list(permute_elbr(cond=[True, False], body=[4444], filt=elbr_filt))
+    el = list(permute_el(body=[3333], filt=el_filt))
+    inner = list(permute_br(pre=[5678],
+                       cond=[True, False, True],
+                       body=[2222],
+                       post=[8765],
+                       elbr=elbr,
+                       el=el,
+                       filt=br_filt))
+    outer = list(permute_br(cond=[1111, True, False]))
+    for obr in outer:
+        for ibr in inner:
+            obr.body = [ibr]
+            # Add a list of elbrs to the end if there aren't any in the body
+            if not ibr.elbr:
+                obr.elbr = elbr
+            # Add an el to the end if there aren't any in the body
+            if not ibr.el:
+                obr.el = ElStmt([ibr])
             print(obr.remit())
 
 
@@ -321,7 +351,7 @@ def main():
         'br_solo': generate_br_solo,
         'br_el': generate_br_el,
         'br_elbr': generate_br_elbr,
-        'br_elbr_el': unimp,
+        'br_elbr_el': generate_br_elbr_el,
     }
     def show_usage():
         print("usage: {} SUITE".format(argv[0]), file=sys.stderr)
