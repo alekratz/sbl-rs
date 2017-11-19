@@ -4,25 +4,27 @@
 
 Original name, right?
 
-If you're just getting started, check the [wiki](https://github.com/alekratz/sbl-rs/wiki)!
+If you're just getting started, check the [wiki](https://github.com/alekratz/sbl-rs/wiki)! (Wiki is out of date and contains some really old, phased-out syntax - peruse at your own risk)
+
+Please don't use this for anything real, it's just a **toy language.**
 
 ## This is what it looks like:
 ```
-# Calculates n factorial (n!).
+; Calculates n factorial (n!).
 fact {
-    # duplicate and compare to zero
+    ; duplicate and compare to zero
     ^ 0 ==
     br {
         .@
-        # pop off to nothing, and push a 1
+        ; pop off to nothing, and push a 1
         .@ 1
     }
     el {
         .@
-        .x       # pop into x
-        x 1 -    # push a copy and subtract 1 from it
-        fact     # call factorial
-        x *      # multiply whatever our factorial is by x
+        .x       ; pop into x
+        x 1 -    ; push a copy and subtract 1 from it
+        fact     ; call factorial
+        x *      ; multiply whatever our factorial is by x
     }
 }
 
